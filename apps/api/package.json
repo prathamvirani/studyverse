@@ -1,0 +1,17 @@
+{
+  "name": "@study/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@study/contracts": "0.0.0",
+    "@study/feature-sdk": "0.0.0",
+    "@study/core": "0.0.0",
+    "@study/adapters": "0.0.0",
+    "fastify": "5.12.3",
+    "@fastify/cookie": "11.1.2",
+    "@fastify/websocket": "11.3.0",
+    "@fastify/helmet": "13.1.1",
+    "pino": "10.3.1"
+  }
+}

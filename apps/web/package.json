@@ -1,0 +1,20 @@
+{
+  "name": "@study/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0",
+    "build": "nuxt build",
+    "typecheck": "nuxt prepare && nuxt typecheck"
+  },
+  "dependencies": {
+    "@study/contracts": "0.0.0",
+    "@study/core": "0.0.0",
+    "@study/ui": "0.0.0",
+    "@study/adapters": "0.0.0",
+    "nuxt": "4.5.2",
+    "nuxt-security": "2.6.0",
+    "vue": "3.5.42"
+  }
+}

@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Dependencies, generated builds, local secrets and verified host backups are not source files"
+paths = [
+  '''(^|[/\\])node_modules[/\\]''',
+  '''(^|[/\\])\.local[/\\]''',
+  '''(^|[/\\])\.nuxt[/\\]''',
+  '''(^|[/\\])\.output[/\\]''',
+  '''(^|[/\\])dist[/\\]''',
+  '''(^|[/\\])test-results[/\\]'''
+]

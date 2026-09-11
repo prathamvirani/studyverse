@@ -1,0 +1,15 @@
+{
+  "name": "@study/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "@study/contracts": "0.0.0",
+    "@study/feature-sdk": "0.0.0"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  admin off
+  auto_https disable_redirects
+}
+
+{$APP_ORIGIN} {
+  tls internal
+  header -Server
+  @api path /api/*
+  handle @api {
+    reverse_proxy api:3001
+  }
+  handle {
+    reverse_proxy web:3000
+  }
+}

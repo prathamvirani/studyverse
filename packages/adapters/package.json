@@ -1,0 +1,19 @@
+{
+  "name": "@study/adapters",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./postgres": "./src/postgres/index.ts",
+    "./redis": "./src/redis/index.ts",
+    "./indexeddb": "./src/indexeddb/index.ts"
+  },
+  "dependencies": {
+    "@study/contracts": "0.0.0",
+    "@study/feature-sdk": "0.0.0",
+    "@study/core": "0.0.0",
+    "pg": "8.23.0",
+    "redis": "6.2.1",
+    "idb": "8.0.3"
+  }
+}

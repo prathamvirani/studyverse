@@ -1,0 +1,13 @@
+node_modules
+.nuxt
+.output
+dist
+coverage
+.local
+package-lock.json
+packages/contracts/generated
+test-results
+playwright-report
+docs/studyverse_umbrella_product_spec.md
+docs/UMBRELLA_SPEC.md
+docs/phases/PHASE_00_FOUNDATIONS.md
