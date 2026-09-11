@@ -4,10 +4,76 @@ import {
   importsFrom,
   importViolations,
   browserGraphViolations,
+  roomShellGraphViolations,
+  circularDependencies,
+  productionSourceViolations,
 } from '../../scripts/check-boundaries.ts';
 
 it('checks all repository source boundaries', async () => {
   expect(await checkBoundaries()).toEqual([]);
+});
+it('rejects concrete features hidden behind a RoomShell helper or re-export', () => {
+  expect(
+    roomShellGraphViolations(
+      new Map([
+        ['apps/web/app/components/room/RoomShell.vue', ['./helper.ts']],
+        ['apps/web/app/components/room/helper.ts', ['@study/friends/browser']],
+        ['packages/features/friends/src/browser.ts', []],
+      ]),
+    ),
+  ).not.toEqual([]);
+});
+it('rejects file cycles including extensionless and type-barrel dependencies', () => {
+  expect(
+    circularDependencies(
+      new Map([
+        ['packages/feature-sdk/src/index.ts', ['./identity.ts']],
+        ['packages/feature-sdk/src/identity.ts', ['./index']],
+      ]),
+    ),
+  ).not.toEqual([]);
+  expect(
+    circularDependencies(
+      new Map([
+        ['packages/feature-sdk/src/index.ts', ['./identity.ts', './foundation.ts']],
+        ['packages/feature-sdk/src/identity.ts', ['./foundation.ts']],
+        ['packages/feature-sdk/src/foundation.ts', []],
+      ]),
+    ),
+  ).toEqual([]);
+});
+it('enforces feature-owned SQL while permitting public SDK access and owned aliases', () => {
+  const path = 'packages/features/chat/src/server.ts';
+  expect(
+    productionSourceViolations(
+      path,
+      'await db.query(sql`SELECT * FROM friends.blocks WHERE user_id=${id}`)',
+    ),
+  ).not.toEqual([]);
+  expect(
+    productionSourceViolations(
+      path,
+      'await db.query(sql`SELECT c.id FROM chat.messages c WHERE c.id=${id}`)',
+    ),
+  ).toEqual([]);
+  expect(productionSourceViolations(path, 'await rooms.role(userId, roomId)')).toEqual([]);
+});
+it('permits only the centralized legacy deployment keys in product phase references', () => {
+  expect(
+    productionSourceViolations(
+      'apps/api/src/module-support.ts',
+      "const legacy = 'PHASE01_ENABLED';",
+    ),
+  ).toEqual([]);
+  expect(
+    productionSourceViolations('apps/api/src/phase04.ts', 'export const module = {}'),
+  ).not.toEqual([]);
+  expect(
+    productionSourceViolations('apps/api/src/productivity.ts', 'const phase04Panel = {}'),
+  ).not.toEqual([]);
+  expect(
+    productionSourceViolations('apps/api/src/module-support.ts', 'const phase01Modules = []'),
+  ).not.toEqual([]);
 });
 it.each(['./neutral.ts', './neutral', './neutral.js'])(
   'rejects a server dependency hidden behind browser barrel %s',

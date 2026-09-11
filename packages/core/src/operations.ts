@@ -76,6 +76,7 @@ export class OperationRegistry extends Registry<RegisteredOperation> {
     context.signal.throwIfAborted();
     const operation = this.get(id);
     if (!operation) throw new AppError('NOT_FOUND');
+    if (operation.kind === 'authentication' && !context.browser) throw new AppError('FORBIDDEN');
     if (!('public' in operation.access) && !context.actor) throw new AppError('UNAUTHENTICATED');
     const input = operation.input.safeParse(raw);
     if (!input.success) throw new AppError('INVALID_REQUEST');

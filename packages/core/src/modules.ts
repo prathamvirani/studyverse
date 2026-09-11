@@ -173,6 +173,19 @@ export class ModuleRuntime {
       ...new Set([...this.active.values()].flatMap(({ module }) => module.capabilities ?? [])),
     ].sort();
   }
+  async connectionClosed(id: string): Promise<void> {
+    await Promise.all(
+      [...this.active.values()].map(async ({ module }) => {
+        if (module.connectionClosed) {
+          try {
+            await bounded(() => module.connectionClosed!(id), this.timeoutMs);
+          } catch {
+            this.observer.record('module.connection-cleanup.failed', { module: module.id });
+          }
+        }
+      }),
+    );
+  }
   moduleIds(): readonly string[] {
     return [...this.active.keys()];
   }

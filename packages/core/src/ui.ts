@@ -26,6 +26,12 @@ export class TileRegistry extends Registry<TileDefinition> {
   override register(id: string, tile: TileDefinition) {
     if (
       id !== tile.type ||
+      ![
+        tile.minimumSize.width,
+        tile.minimumSize.height,
+        tile.defaultSize.width,
+        tile.defaultSize.height,
+      ].every(Number.isFinite) ||
       tile.minimumSize.width <= 0 ||
       tile.minimumSize.height <= 0 ||
       tile.defaultSize.width < tile.minimumSize.width ||
@@ -41,7 +47,7 @@ export interface TileInstance {
   readonly resourceKey: string;
   layout: TileLayout;
 }
-/** Generic instance/layout ownership only. Product drag/resize and stream transfer are later phases. */
+/** Generic local instance/layout ownership. No media or feature-specific behavior. */
 export class TileHost {
   private readonly instances = new Map<string, TileInstance>();
   constructor(
@@ -88,6 +94,7 @@ export class TileHost {
     )
       throw new Error('Invalid tile layout');
     instance.layout = layout;
+    definition.onLayoutChange?.(id, layout);
   }
   close(id: string): void {
     const instance = this.instances.get(id);

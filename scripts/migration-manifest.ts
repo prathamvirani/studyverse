@@ -18,6 +18,11 @@ export async function migrationManifest(
       id: '0001_sessions',
       sql: await readFile(resolve('packages/core/migrations/0001_sessions.sql'), 'utf8'),
     },
+    {
+      owner: 'core',
+      id: '0002_session_devices',
+      sql: await readFile(resolve('packages/core/migrations/0002_session_devices.sql'), 'utf8'),
+    },
     ...featureMigrations,
   ];
 }

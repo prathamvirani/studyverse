@@ -45,7 +45,14 @@ const redis = createRedis(
 redis.on('error', () => {});
 const manifest = await migrationManifest();
 beforeAll(async () => {
+  await migrationPool.query('DROP SCHEMA IF EXISTS backgrounds CASCADE');
+  await migrationPool.query('DROP SCHEMA IF EXISTS pomodoro CASCADE');
+  await migrationPool.query('DROP SCHEMA IF EXISTS tasks CASCADE');
+  await migrationPool.query('DROP SCHEMA IF EXISTS chat CASCADE');
+  await migrationPool.query('DROP SCHEMA IF EXISTS friends CASCADE');
   // Failure is a failing prerequisite, never a silently skipped integration test.
+  await migrationPool.query('DROP SCHEMA IF EXISTS rooms CASCADE');
+  await migrationPool.query('DROP SCHEMA IF EXISTS identity CASCADE');
   await migrationPool.query('DROP SCHEMA IF EXISTS core CASCADE');
   await migrationPool.query('DROP SCHEMA IF EXISTS foundation CASCADE');
   await migrate(migrationPool, manifest);
@@ -58,9 +65,16 @@ afterAll(async () => {
 describe('real PostgreSQL', () => {
   it('migrates from zero, reruns idempotently and detects drift/missing history', async () => {
     await migrate(migrationPool, manifest);
-    expect((await migrationPool.query('SELECT * FROM foundation.migrations')).rowCount).toBe(1);
+    expect((await migrationPool.query('SELECT * FROM foundation.migrations')).rowCount).toBe(
+      manifest.length,
+    );
     await expect(
-      migrate(migrationPool, [{ ...manifest[0]!, sql: manifest[0]!.sql + '\n-- changed' }]),
+      migrate(
+        migrationPool,
+        manifest.map((entry, index) =>
+          index === 0 ? { ...entry, sql: entry.sql + '\n-- changed' } : entry,
+        ),
+      ),
     ).rejects.toThrow('checksum');
     await expect(migrate(migrationPool, [])).rejects.toThrow('missing');
   });

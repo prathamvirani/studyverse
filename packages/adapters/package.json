@@ -4,16 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./livekit/browser": "./src/livekit/browser.ts",
+    "./livekit/server": "./src/livekit/server.ts",
+    "./oauth": "./src/oauth/index.ts",
     "./postgres": "./src/postgres/index.ts",
     "./redis": "./src/redis/index.ts",
     "./indexeddb": "./src/indexeddb/index.ts"
   },
   "dependencies": {
     "@study/contracts": "0.0.0",
-    "@study/feature-sdk": "0.0.0",
     "@study/core": "0.0.0",
+    "@study/feature-sdk": "0.0.0",
+    "idb": "8.0.3",
+    "jose": "6.2.12",
+    "livekit-client": "2.22.3",
+    "livekit-server-sdk": "2.19.0",
     "pg": "8.23.0",
-    "redis": "6.2.1",
-    "idb": "8.0.3"
+    "redis": "6.2.1"
   }
 }

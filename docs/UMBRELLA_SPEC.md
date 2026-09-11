@@ -468,9 +468,11 @@ Support:
 - reset;
 - skip;
 - room permission model;
-- optional personal timer detachment later.
+- first-class Personal and Shared timer modes (required in Phase 04 by owner amendment);
+- independent durable account-private and room-shared state;
+- switching scope preserves both timers; personal timers continue across rooms.
 
-Shared timer state should be server-authoritative with server timestamps so late joiners render the same timer position.
+Both timer scopes use server-authoritative state and timestamps. Personal timer identity comes only from the authenticated session; room subscriptions must never expose it. Shared late joiners derive the same position from authoritative state. Personal and Shared storage and permissions remain separate.
 
 ---
 
@@ -480,6 +482,8 @@ One task module with two scopes:
 
 - Personal
 - Shared
+
+Personal and Shared tasks use separate durable tables and distinct ownership/permission policies; sharing a UI panel must not merge their security models.
 
 ## 12.1 Personal tasks
 
@@ -511,6 +515,8 @@ Potential later features:
 ---
 
 # 13. Chat
+
+Room text chat uses authenticated application WebSocket/realtime transport and HTTPS durable APIs. It does not use WebRTC or RTCDataChannel. History, ordering, moderation, rate limits and reconnect/resync remain server-authoritative.
 
 Room chat should support:
 
@@ -1074,6 +1080,8 @@ A real native client may eventually provide:
 
 # 30. Camera, Microphone, and Screen Sharing
 
+Owner-approved transport direction: see [Application and Media Transport Decision](architecture/TRANSPORT_PLAN.md). Browser media uses WebRTC through an SFU, never naive full-mesh multi-user publication. Prefer encoded forwarding over server decode/re-encode/compositing. LiveKit is the preferred initial provider behind a generic adapter, preserving a future MediasoupAdapter or other replacement. This is direction for later RTC phases, not authorization to implement RTC in Phase 04.
+
 Use WebRTC or an equivalent low-latency RTC stack.
 
 The architecture should support an SFU rather than relying on pure peer-to-peer mesh for meaningful room sizes.
@@ -1216,7 +1224,9 @@ Suggested starting ranges for testing:
 
 Actual encoder behavior should be measured.
 
-The server must enforce maximum accepted profiles so a modified client cannot bypass development caps and accidentally send an extreme stream.
+**Owner amendment, 2026-09-11 (Phase 06 completion pass):** identity, room scope, membership/session validity and publish/subscribe/source grants remain server/provider-enforced security requirements. The Phase 06 dimensions/FPS/bitrate ceilings are trusted-product-client capture/encoder limits. Stock LiveKit is not required to hard-police hostile RTP characteristics for acceptance. Excessive streams are an observable abuse/resource-policy concern and possible later infrastructure work; never describe client limits as hard SFU enforcement. This amendment supersedes earlier wording requiring hostile-client quality-cap enforcement.
+
+An explicitly activated publisher may be identified to authorized, unblocked viewers inside that room through the application media projection. This narrow room-local media visibility does not change global/friend-list presence privacy. Receive-only SFU connections carry opaque identities and no application profile metadata.
 
 ## 31A.4 Development-stage quality UI
 
@@ -1383,7 +1393,7 @@ Fullscreen
 → highest useful layer under user's receive cap
 ```
 
-Use simulcast and/or scalable video coding where appropriate.
+Use simulcast and/or scalable video coding where appropriate. Hidden/minimized tiles should stop receiving video where practical. “Max” means the highest useful layer for rendered size within user-selected and development ceilings, not every stream at maximum resolution.
 
 The user's setting means:
 
@@ -2934,7 +2944,18 @@ Build in phases, but do not let the early implementation destroy the intended ex
 - Apple Music room-sync feasibility review;
 - provider permission/legal validation.
 
-## Phase 11 — OBS / Studio Ingest
+## Phase 11 — Social Bonding & Mini-Games
+
+- optional, non-intrusive break activities as specified in §69;
+- original word puzzle and drawing/guessing games, plus the planned trivia, word association, icebreakers and simple board/card activities;
+- explicit join/decline/spectate, never forced automatic game starts;
+- server-authoritative game state and modular activity registration;
+- optional Pomodoro break suggestions through contracts/events, without direct RoomShell, Pomodoro, Presence or Chat coupling;
+- no OBS, extension or native-app prerequisite.
+
+Social activities follow media/music as part of the core social study experience. The remaining phases are later power-user/platform expansions; their numeric sequence does not introduce functional dependencies on games.
+
+## Phase 12 — OBS / Studio Ingest
 
 OBS/Studio ingest is intentionally deferred until normal browser RTC is stable and cost/quality measurements exist.
 
@@ -2948,14 +2969,14 @@ OBS/Studio ingest is intentionally deferred until normal browser RTC is stable a
 - hardware-encoded high-quality profiles;
 - no requirement to ship OBS integration in the initial friend-group deployment.
 
-## Phase 12 — Browser Extension
+## Phase 13 — Browser Companion Extension
 
 - attach tab;
 - personal media companion;
 - secure permissions;
 - current-page integration.
 
-## Phase 13 — Native Applications
+## Phase 14 — Native Applications
 
 - platform-native clients;
 - shared protocol/domain libraries;

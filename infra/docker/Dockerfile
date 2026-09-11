@@ -10,6 +10,13 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/packages/core/migrations ./packages/core/migrations
+COPY --from=build --chown=node:node /app/packages/features/identity/migrations ./packages/features/identity/migrations
+COPY --from=build --chown=node:node /app/packages/features/rooms/migrations ./packages/features/rooms/migrations
+COPY --from=build --chown=node:node /app/packages/features/friends/migrations ./packages/features/friends/migrations
+COPY --from=build --chown=node:node /app/packages/features/pomodoro/migrations ./packages/features/pomodoro/migrations
+COPY --from=build --chown=node:node /app/packages/features/tasks/migrations ./packages/features/tasks/migrations
+COPY --from=build --chown=node:node /app/packages/features/chat/migrations ./packages/features/chat/migrations
+COPY --from=build --chown=node:node /app/packages/features/backgrounds/migrations ./packages/features/backgrounds/migrations
 USER node
 EXPOSE 3001
 CMD ["node", "dist/api/main.mjs"]

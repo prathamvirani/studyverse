@@ -22,20 +22,25 @@ function lazy(load: () => Promise<unknown>): Component {
   });
 }
 const ContributionBoundary = defineComponent({
-  props: { renderer: { type: [Object, Function] as PropType<Component>, required: true } },
+  props: {
+    renderer: { type: [Object, Function] as PropType<Component>, required: true },
+    context: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
+  },
   setup(props) {
     const failed = ref(false);
     onErrorCaptured(() => {
       failed.value = true;
       return false;
     });
-    return () => (failed.value ? h(Unavailable) : h(props.renderer));
+    return () => (failed.value ? h(Unavailable) : h(props.renderer, props.context));
   },
 });
 export const UiExtensionHost = defineComponent({
   props: {
     registry: { type: Object as PropType<UiRegistry>, required: true },
     point: { type: String as PropType<ExtensionPoint>, required: true },
+    onlyId: { type: String, default: '' },
+    context: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
     can: { type: Function as PropType<(permission: string) => boolean>, default: () => false },
   },
   setup(props) {
@@ -44,12 +49,18 @@ export const UiExtensionHost = defineComponent({
       h(
         'div',
         { 'data-extension-point': props.point },
-        props.registry.at(props.point, props.can).map((item) => {
-          if (!renderers.has(item.id)) renderers.set(item.id, lazy(item.load));
-          return h('section', { key: item.id, 'aria-label': item.label }, [
-            h(ContributionBoundary, { renderer: renderers.get(item.id)! }),
-          ]);
-        }),
+        props.registry
+          .at(props.point, props.can)
+          .filter((item) => !props.onlyId || item.id === props.onlyId)
+          .map((item) => {
+            if (!renderers.has(item.id)) renderers.set(item.id, lazy(item.load));
+            return h('section', { key: item.id, 'aria-label': item.label }, [
+              h(ContributionBoundary, {
+                renderer: renderers.get(item.id)!,
+                context: props.context,
+              }),
+            ]);
+          }),
       );
   },
 });
@@ -63,7 +74,12 @@ export const WorkspaceTileView = defineComponent({
     const renderers = new Map<string, Component>();
     return () => {
       const definition = props.registry.get(props.instance.type);
-      if (!definition || (definition.permission && !props.can(definition.permission))) return null;
+      if (
+        !definition ||
+        props.instance.layout.minimized ||
+        (definition.permission && !props.can(definition.permission))
+      )
+        return null;
       if (!renderers.has(definition.type)) renderers.set(definition.type, lazy(definition.load));
       return h(
         'section',
@@ -72,7 +88,12 @@ export const WorkspaceTileView = defineComponent({
           'data-tile-id': props.instance.id,
           hidden: props.instance.layout.minimized,
         },
-        [h(ContributionBoundary, { renderer: renderers.get(definition.type)! })],
+        [
+          h(ContributionBoundary, {
+            renderer: renderers.get(definition.type)!,
+            context: { instance: props.instance },
+          }),
+        ],
       );
     };
   },

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 export { z } from 'zod';
+export * from './identity.ts';
+export * from './social.ts';
 
 export const PROTOCOL_VERSION = 1 as const;
 export const identifier = z
@@ -57,6 +59,8 @@ export const csrfResponseSchema = z.strictObject({
 export const healthSchema = z.strictObject({ status: z.enum(['ok', 'unavailable']) });
 export const emptySchema = z.strictObject({});
 export const extensionPoints = [
+  'environment',
+  'homeNavigation',
   'topBar',
   'participantContextMenu',
   'participantBadge',
@@ -89,3 +93,7 @@ export function negotiateCapabilities(
 ): string[] {
   return [...new Set(client)].filter((item) => server.includes(item)).sort();
 }
+
+export * from './productivity.ts';
+export * from './backgrounds.ts';
+export * from './rtc.ts';

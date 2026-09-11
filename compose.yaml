@@ -30,6 +30,22 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
+  livekit:
+    image: livekit/livekit-server:v1.13.6@sha256:e37d68f172556d02aa77968b9fc55ef481468c0315fa38e4fa6c56ce72e3a815
+    command: ['--config', '/etc/livekit.yaml']
+    volumes: ['./.local/livekit.yaml:/etc/livekit.yaml:ro']
+    ports:
+      [
+        '127.0.0.1:7880:7880',
+        '127.0.0.1:7881:7881',
+        '127.0.0.1:7882:7882/udp',
+        '127.0.0.1:3478:3478/udp',
+      ]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:7880/']
+      interval: 3s
+      timeout: 3s
+      retries: 30
   migrate:
     build: { context: ., dockerfile: infra/docker/Dockerfile, target: api }
     environment:
@@ -47,7 +63,29 @@ services:
       DATABASE_URL: postgresql://study_runtime:${RUNTIME_PASSWORD}@postgres:5432/study
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LOG_LEVEL: info
+      PHASE01_ENABLED: ${PHASE01_ENABLED:-true}
+      IDENTITY_ROOMS_ENABLED: ${IDENTITY_ROOMS_ENABLED:-true}
+      POMODORO_ENABLED: ${POMODORO_ENABLED:-true}
+      TASKS_ENABLED: ${TASKS_ENABLED:-true}
+      BACKGROUNDS_ENABLED: ${BACKGROUNDS_ENABLED:-true}
+      RTC_ENABLED: ${RTC_ENABLED:-true}
+      LIVEKIT_URL: wss://localhost:8443
+      LIVEKIT_SERVICE_URL: http://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      CHAT_ENABLED: ${CHAT_ENABLED:-true}
+      PHASE03_ENABLED: ${PHASE03_ENABLED:-true}
+      SOCIAL_ENABLED: ${SOCIAL_ENABLED:-true}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      OAUTH_MICROSOFT_CLIENT_ID: ${OAUTH_MICROSOFT_CLIENT_ID:-}
+      OAUTH_MICROSOFT_CLIENT_SECRET: ${OAUTH_MICROSOFT_CLIENT_SECRET:-}
+      OAUTH_MICROSOFT_TENANT: ${OAUTH_MICROSOFT_TENANT:-common}
+      OAUTH_MICROSOFT_ENABLED: ${OAUTH_MICROSOFT_ENABLED:-false}
+      OAUTH_DISCORD_CLIENT_ID: ${OAUTH_DISCORD_CLIENT_ID:-}
+      OAUTH_DISCORD_CLIENT_SECRET: ${OAUTH_DISCORD_CLIENT_SECRET:-}
     depends_on:
+      livekit: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     healthcheck:

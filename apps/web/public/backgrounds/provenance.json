@@ -1,0 +1,104 @@
+[
+  {
+    "id": "cedar-library",
+    "title": "Cedar library",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "static",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 33118,
+    "thumbnailBytes": 7772,
+    "source": "cedar-library.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  },
+  {
+    "id": "morning-studio",
+    "title": "Morning studio",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "static",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 15586,
+    "thumbnailBytes": 3022,
+    "source": "morning-studio.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  },
+  {
+    "id": "alpine-lake",
+    "title": "Alpine stillness",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "static",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 23550,
+    "thumbnailBytes": 3932,
+    "source": "alpine-lake.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  },
+  {
+    "id": "rainy-window",
+    "title": "Rain at the window",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "animated visual (static original + CSS seamless loop)",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 22316,
+    "thumbnailBytes": 4600,
+    "source": "rainy-window.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  },
+  {
+    "id": "night-observatory",
+    "title": "After midnight",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "animated visual (static original + CSS seamless loop)",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 15698,
+    "thumbnailBytes": 2318,
+    "source": "night-observatory.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  },
+  {
+    "id": "quiet-hours",
+    "title": "The quiet hours",
+    "origin": "Project-created vector illustration",
+    "creator": "Study platform project / Codex",
+    "license": "Project-owned original asset; no third-party source material",
+    "attributionRequired": false,
+    "kind": "static",
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "bytes": 32066,
+    "thumbnailBytes": 5286,
+    "source": "quiet-hours.svg",
+    "renderer": "apps/web/app/components/backgrounds/EnvironmentSurface.vue"
+  }
+]

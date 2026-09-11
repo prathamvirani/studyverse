@@ -5,10 +5,39 @@ import type { z } from '@study/contracts';
 export function createApiClient(fetcher: typeof fetch = fetch) {
   let csrf: string | undefined;
   return {
+    async authentication<T>(
+      path: `/api/v1/account/${string}`,
+      schema: z.ZodType<T>,
+      input: unknown,
+    ): Promise<T> {
+      if (!/^\/api\/v1\/account\/[a-z-]+$/.test(path))
+        throw new Error('Invalid authentication path');
+      const csrfResponse = await fetcher('/api/v1/session/csrf', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      const token = csrfResponse.ok
+        ? csrfResponseSchema.parse(await csrfResponse.json()).csrfToken
+        : undefined;
+      const response = await fetcher(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+          'x-study-auth': '1',
+          ...(token ? { 'x-csrf-token': token } : {}),
+        },
+        body: JSON.stringify(input),
+      });
+      csrf = undefined;
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      return schema.parse(await response.json());
+    },
     async request<T>(path: `/api/v1/${string}`, schema: z.ZodType<T>, input?: unknown): Promise<T> {
       if (!path.startsWith('/api/v1/') || path.includes('://') || path.includes('\\'))
         throw new Error('Invalid API path');
-      if (input !== undefined && !csrf) {
+      if (input !== undefined) {
         const response = await fetcher('/api/v1/session/csrf', {
           credentials: 'same-origin',
           cache: 'no-store',

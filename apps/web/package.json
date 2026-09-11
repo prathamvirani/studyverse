@@ -9,12 +9,18 @@
     "typecheck": "nuxt prepare && nuxt typecheck"
   },
   "dependencies": {
+    "@study/adapters": "0.0.0",
     "@study/contracts": "0.0.0",
     "@study/core": "0.0.0",
+    "@study/identity": "0.0.0",
+    "@study/rooms": "0.0.0",
+    "@study/friends": "0.0.0",
     "@study/ui": "0.0.0",
-    "@study/adapters": "0.0.0",
     "nuxt": "4.5.2",
     "nuxt-security": "2.6.0",
-    "vue": "3.5.42"
+    "vue": "3.5.42",
+    "@study/pomodoro": "*",
+    "@study/backgrounds": "*",
+    "@study/rtc": "*"
   }
 }

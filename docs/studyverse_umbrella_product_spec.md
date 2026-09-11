@@ -1,3 +1,5 @@
+> Historical source archive. The body below preserves the original product specification and original roadmap numbering. For current requirements and the reordered Phases 11–14, use [UMBRELLA_SPEC.md](UMBRELLA_SPEC.md) and [the phase index](phases/README_PHASES.md).
+
 # Umbrella Product & Technical Specification
 ## Studyverse-Inspired Social Study Platform
 **Working title:** `[PROJECT NAME TBD]`  

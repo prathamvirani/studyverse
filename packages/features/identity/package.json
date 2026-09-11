@@ -1,0 +1,14 @@
+{
+  "name": "@study/identity",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "dependencies": {
+    "@study/contracts": "0.0.0",
+    "@study/feature-sdk": "0.0.0"
+  }
+}

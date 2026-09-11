@@ -94,6 +94,6 @@ it('collects feature migrations by dependency order regardless of runtime flags'
   };
   expect(
     (await migrationManifest([dependent, feature])).map((migration) => migration.owner),
-  ).toEqual(['core', 'fixture', 'dependent']);
+  ).toEqual(['core', 'core', 'fixture', 'dependent']);
   await expect(migrationManifest([{ ...feature, id: 'impostor' }])).rejects.toThrow('ownership');
 });

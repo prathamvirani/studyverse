@@ -85,6 +85,13 @@ export class Sessions {
     this.observer.record('session.rotated');
     return replacement;
   }
+  /** Called only by a CSRF-protected POST. GET authentication remains read-only. */
+  async refresh(token: string): Promise<IssuedSession> {
+    const session = await this.authenticate(token);
+    if (this.now() - (session.idleExpiresAt - this.idleMs) < 60 * 60 * 1000)
+      return { token, session };
+    return this.rotate(token);
+  }
   async revoke(id: string): Promise<void> {
     await this.store.revoke(id, this.now());
     this.observer.record('session.revoked');

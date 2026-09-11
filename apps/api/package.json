@@ -4,14 +4,23 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@study/contracts": "0.0.0",
-    "@study/feature-sdk": "0.0.0",
-    "@study/core": "0.0.0",
-    "@study/adapters": "0.0.0",
-    "fastify": "5.12.3",
     "@fastify/cookie": "11.1.2",
-    "@fastify/websocket": "11.3.0",
     "@fastify/helmet": "13.1.1",
-    "pino": "10.3.1"
+    "@fastify/websocket": "11.3.0",
+    "@study/adapters": "0.0.0",
+    "@study/contracts": "0.0.0",
+    "@study/core": "0.0.0",
+    "@study/feature-sdk": "0.0.0",
+    "@study/identity": "0.0.0",
+    "@study/rooms": "0.0.0",
+    "@study/friends": "0.0.0",
+    "@study/presence": "0.0.0",
+    "fastify": "5.12.3",
+    "pino": "10.3.1",
+    "@study/pomodoro": "*",
+    "@study/tasks": "*",
+    "@study/chat": "*",
+    "@study/backgrounds": "*",
+    "@study/rtc": "*"
   }
 }

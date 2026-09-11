@@ -5,7 +5,13 @@ import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import { commandEnvelopeSchema, emptySchema, healthSchema } from '@study/contracts';
-import type { FeatureModule, Observer, RateLimiter, SessionRecord } from '@study/feature-sdk';
+import type {
+  BrowserAuthentication,
+  FeatureModule,
+  Observer,
+  RateLimiter,
+  SessionRecord,
+} from '@study/feature-sdk';
 import {
   AppError,
   ModuleRuntime,
@@ -162,11 +168,31 @@ export async function createServer(dependencies: ServerDependencies) {
         const operation = runtime.operations.get(binding.operation);
         if (!operation) throw new AppError('NOT_FOUND');
         const mutation = !['GET', 'HEAD'].includes(request.method);
-        const session = await sessionFor(request, mutation || !('public' in operation.access));
+        const authentication = operation.kind === 'authentication';
+        let session: SessionRecord | null;
+        try {
+          session = await sessionFor(
+            request,
+            (!authentication && mutation) || !('public' in operation.access),
+          );
+        } catch (error) {
+          if (
+            !authentication ||
+            !('public' in operation.access) ||
+            !(error instanceof AppError) ||
+            error.code !== 'UNAUTHENTICATED'
+          )
+            throw error;
+          session = null;
+        }
         boundary(request, mutation);
         if (mutation) {
-          if (!session) throw new AppError('UNAUTHENTICATED');
-          sessions.verifyCsrf(session, request.headers['x-csrf-token']);
+          if (!session && !authentication) throw new AppError('UNAUTHENTICATED');
+          if (session) sessions.verifyCsrf(session, request.headers['x-csrf-token']);
+          // Pre-session authentication is an explicit POST-only contract. Exact Origin,
+          // JSON and a custom header prevent browser CSRF before a session exists.
+          if (authentication && request.headers['x-study-auth'] !== '1')
+            throw new AppError('CSRF_REJECTED');
           if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] ?? ''))
             throw new AppError('INVALID_REQUEST');
         }
@@ -180,12 +206,46 @@ export async function createServer(dependencies: ServerDependencies) {
           throw new AppError('INVALID_REQUEST');
         const input = binding.input === 'parts' ? parts : parts[binding.input];
         const controller = new AbortController();
+        const cookies: string[] = [];
+        const flowCookie = '__Host-study-flow';
+        const browser: BrowserAuthentication | undefined = authentication
+          ? {
+              flowToken: request.cookies[flowCookie],
+              deviceLabel: (request.headers['user-agent'] ?? 'Browser')
+                .replace(/[^\x20-\x7e]/g, '')
+                .slice(0, 120),
+              setFlowToken(token) {
+                if (token !== null && !/^[A-Za-z0-9_-]{43}$/.test(token))
+                  throw new AppError('INTERNAL');
+                cookies.push(
+                  `${flowCookie}=${token ?? ''}; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=${token ? 600 : 0}`,
+                );
+              },
+              async issueSession(subjectId) {
+                const issued = await sessions.issue(subjectId);
+                cookies.push(sessions.cookie(issued));
+                return issued.session.id;
+              },
+              async refreshSession() {
+                if (!session) throw new AppError('UNAUTHENTICATED');
+                cookies.push(
+                  sessions.cookie(await sessions.refresh(request.cookies[SESSION_COOKIE]!)),
+                );
+              },
+              clearSession() {
+                cookies.push(sessions.clearCookie());
+              },
+            }
+          : undefined;
         try {
-          return await runtime.operations.execute(binding.operation, input, {
+          const result = await runtime.operations.execute(binding.operation, input, {
             actor: session ? sessions.actor(session) : null,
             requestId: request.id,
             signal: controller.signal,
+            ...(browser ? { browser } : {}),
           });
+          if (cookies.length) reply.header('Set-Cookie', cookies);
+          return result;
         } finally {
           controller.abort();
         }
@@ -206,6 +266,53 @@ export async function createServer(dependencies: ServerDependencies) {
       },
     },
     (socket, request) => {
+      const connectionId = randomUUID();
+      const snapshots = new Map<
+        string,
+        { operation: string; payload: unknown; event: string; last: string }
+      >();
+      let delivering = false;
+      const deliveryTimer = setInterval(() => {
+        if (closed || delivering || !snapshots.size) return;
+        delivering = true;
+        void (async () => {
+          try {
+            for (const [key, item] of snapshots) {
+              const session = await sessions.authenticate(token);
+              const result = await runtime.operations.execute(item.operation, item.payload, {
+                actor: sessions.actor(session),
+                requestId: randomUUID(),
+                signal: AbortSignal.timeout(2000),
+                connectionId,
+              });
+              const encoded = JSON.stringify(result);
+              if (!closed && socket.readyState === 1 && encoded !== item.last) {
+                if (socket.bufferedAmount > 65_536) {
+                  socket.close(1008, 'Slow connection');
+                  return;
+                }
+                socket.send(
+                  JSON.stringify({
+                    version: 1,
+                    eventId: randomUUID(),
+                    event: item.event,
+                    occurredAt: new Date().toISOString(),
+                    payload: result,
+                  }),
+                );
+                if (snapshots.get(key) === item) item.last = encoded;
+              }
+            }
+          } catch {
+            // Never retain a previously authorized subscription after any failed check.
+            snapshots.clear();
+            socket.close(1008, 'Subscription unavailable');
+          } finally {
+            delivering = false;
+          }
+        })();
+      }, 2000);
+      deliveryTimer.unref();
       // Attach listeners synchronously; async message work is queued with a hard bound.
       let pending = 0,
         chain = Promise.resolve(),
@@ -234,6 +341,9 @@ export async function createServer(dependencies: ServerDependencies) {
       timer.unref();
       socket.on('close', () => {
         closed = true;
+        clearInterval(deliveryTimer);
+        snapshots.clear();
+        void chain.finally(() => runtime.connectionClosed(connectionId));
         clearInterval(timer);
         if (trackedSession) {
           const count = (connections.get(trackedSession) ?? 1) - 1;
@@ -283,8 +393,20 @@ export async function createServer(dependencies: ServerDependencies) {
                 const result = await runtime.operations.execute(
                   binding.operation,
                   parsed.data.payload,
-                  { actor: sessions.actor(session), requestId, signal: controller.signal },
+                  {
+                    actor: sessions.actor(session),
+                    requestId,
+                    signal: controller.signal,
+                    connectionId,
+                  },
                 );
+                if (binding.snapshotEvent && !closed)
+                  snapshots.set(binding.command, {
+                    operation: binding.operation,
+                    payload: parsed.data.payload,
+                    event: binding.snapshotEvent,
+                    last: JSON.stringify(result),
+                  });
                 if (!closed && socket.readyState === 1)
                   socket.send(JSON.stringify({ version: 1, requestId, result }));
                 observer.record('realtime.completed', { command: binding.command, requestId });

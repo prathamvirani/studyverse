@@ -1,4 +1,4 @@
-name: Phase 00 validation
+name: Accepted repository validation
 on:
   push:
   pull_request:
@@ -22,9 +22,9 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
-      - name: Build and start the Phase 00 Docker topology
+      - name: Build and start the application Docker topology
         run: npm run dev
-      - run: npm run validate:phase00
+      - run: npm run validate:phase06
       - name: HTTPS topology smoke
         run: |
           curl --fail --silent --insecure https://localhost:8443/api/v1/ready

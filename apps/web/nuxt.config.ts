@@ -13,7 +13,19 @@ export default defineNuxtConfig({
     allowedMethodsRestricter: { methods: ['GET', 'HEAD'] },
     corsHandler: false,
     xssValidator: false,
-    headers: { contentSecurityPolicy: { 'frame-ancestors': ["'none'"] } },
+    headers: {
+      permissionsPolicy: {
+        camera: ['self'],
+        microphone: ['self'],
+        'display-capture': ['self'],
+        autoplay: ['self'],
+      },
+      contentSecurityPolicy: {
+        'frame-ancestors': ["'none'"],
+        'img-src': ["'self'", 'data:', 'blob:'],
+      },
+      referrerPolicy: 'no-referrer',
+    },
   },
   app: {
     head: {

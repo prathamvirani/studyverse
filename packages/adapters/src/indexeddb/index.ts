@@ -117,3 +117,4 @@ export async function createPreferenceStore(
   }
   return new LocalPreferences(definitions, db);
 }
+export { createLocalVisualStore } from './visuals.ts';

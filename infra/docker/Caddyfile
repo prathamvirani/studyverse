@@ -6,6 +6,10 @@
 {$APP_ORIGIN} {
   tls internal
   header -Server
+  @rtc path /rtc /rtc/*
+  handle @rtc {
+    reverse_proxy livekit:7880
+  }
   @api path /api/*
   handle @api {
     reverse_proxy api:3001

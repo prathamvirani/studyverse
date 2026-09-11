@@ -20,7 +20,7 @@ Updated 2026-09-11 after the readiness regression fix. Scope is limited to `docs
 - Browser/server entry points are separate. AST checks cover imports, re-exports, dynamic imports, extensionless barrels and transitive feature dependencies; negative fixtures prove enforcement.
 - Readiness remains an explicit registered foundation GET route, with a narrowly allowlisted infrastructure handler. Ordinary endpoint Host/Origin, authentication, authorization, CSRF and rate-limit requirements remain unchanged.
 - Added readiness integration/unit regressions and an actual Docker health test. The full suite includes Docker health validation, and CI starts the full stack before running it.
-- The architecture plan and detailed contracts are in [PHASE_00_PLAN.md](architecture/PHASE_00_PLAN.md) and [FOUNDATION_CONTRACTS.md](architecture/FOUNDATION_CONTRACTS.md).
+- The architecture plan and detailed contracts are in [PHASE_00_PLAN.md](../architecture/PHASE_00_PLAN.md) and [FOUNDATION_CONTRACTS.md](../architecture/FOUNDATION_CONTRACTS.md).
 
 ## Database migrations:
 

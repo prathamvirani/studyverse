@@ -30,6 +30,12 @@ export function importViolations(from: string, specifier: string): string[] {
   const other = owner(target),
     errors: string[] = [];
   if (
+    /^livekit(?:-client|-server-sdk)?$/.test(specifier) &&
+    !from.startsWith('packages/adapters/src/livekit/') &&
+    !from.startsWith('tests/')
+  )
+    errors.push('SFU SDK imports belong only in the provider adapter');
+  if (
     target &&
     current !== other &&
     specifier.startsWith('.') &&
@@ -68,13 +74,16 @@ export function importViolations(from: string, specifier: string): string[] {
       /^(?:pg|redis|fastify|ws)$/.test(specifier) ||
       specifier === '@study/core' ||
       specifier === '@study/core/server' ||
-      /^@study\/adapters\/(postgres|redis)/.test(specifier) ||
+      /^@study\/adapters\/(postgres|redis|livekit\/server)/.test(specifier) ||
+      specifier === 'livekit-server-sdk' ||
       target.startsWith('apps/api/') ||
       /\/core\/src\/(?:server|sessions|security)\.ts$/.test(target))
   )
     errors.push('Server dependency in browser graph');
   if ((from.startsWith('apps/') || from.startsWith('packages/')) && target.startsWith('tests/'))
     errors.push('Production cannot import test modules');
+  if (/^(apps|packages)\//.test(from) && /(?:^|\/)\w+[.-](?:fixture|test|spec)\./.test(target))
+    errors.push('Production cannot import test fixtures');
   return errors;
 }
 export function importsFrom(
@@ -127,6 +136,13 @@ export async function checkBoundaries(): Promise<string[]> {
     }
   }
   errors.push(...browserGraphViolations(graph));
+  errors.push(...roomShellGraphViolations(graph));
+  errors.push(...circularDependencies(graph));
+  for (const path of graph.keys()) {
+    if (!/^(apps|packages)\//.test(path)) continue;
+    const source = await readFile(path, 'utf8');
+    errors.push(...productionSourceViolations(path, source));
+  }
   return errors;
 }
 function internalTarget(from: string, specifier: string): string | undefined {
@@ -137,8 +153,109 @@ function internalTarget(from: string, specifier: string): string | undefined {
   const base = names[match[1]!] ?? `packages/features/${match[1]}`,
     suffix = match[2];
   if (suffix === '/browser' || suffix === '/server') return `${base}/src${suffix}.ts`;
+  if (match[1] === 'adapters' && suffix?.startsWith('/livekit/')) return `${base}/src${suffix}.ts`;
   if (match[1] === 'adapters') return `${base}/src${suffix}/index.ts`;
   return `${base}/src/index.ts`;
+}
+function graphTarget(
+  graph: ReadonlyMap<string, readonly string[]>,
+  from: string,
+  specifier: string,
+) {
+  const target = internalTarget(from, specifier);
+  return (
+    target &&
+    [
+      target,
+      `${target}.ts`,
+      `${target}.mjs`,
+      `${target}.vue`,
+      `${target}/index.ts`,
+      target.replace(/\.(?:m?js)$/, '.ts'),
+    ].find((candidate) => graph.has(candidate))
+  );
+}
+
+/** Shell dependencies stay generic, including imports hidden behind local barrels. */
+export function roomShellGraphViolations(graph: ReadonlyMap<string, readonly string[]>): string[] {
+  const errors: string[] = [],
+    visited = new Set<string>();
+  const walk = (file: string) => {
+    if (visited.has(file)) return;
+    visited.add(file);
+    for (const specifier of graph.get(file) ?? []) {
+      const target = graphTarget(graph, file, specifier);
+      if (
+        target &&
+        (/^packages\/features\//.test(target) ||
+          /^apps\/web\/app\/(?:room|components\/(?:productivity|backgrounds))\//.test(target) ||
+          /\/adapters\/src\/livekit\//.test(target))
+      )
+        errors.push(
+          `${file}: RoomShell cannot depend on concrete feature composition (${specifier})`,
+        );
+      if (target) walk(target);
+    }
+  };
+  walk('apps/web/app/components/room/RoomShell.vue');
+  return errors;
+}
+
+export function circularDependencies(graph: ReadonlyMap<string, readonly string[]>): string[] {
+  const done = new Set<string>(),
+    active = new Set<string>(),
+    stack: string[] = [],
+    errors: string[] = [];
+  const walk = (file: string) => {
+    if (active.has(file)) {
+      errors.push(
+        `Circular dependency: ${[...stack.slice(stack.indexOf(file)), file].join(' -> ')}`,
+      );
+      return;
+    }
+    if (done.has(file)) return;
+    active.add(file);
+    stack.push(file);
+    for (const specifier of graph.get(file) ?? []) {
+      const target = graphTarget(graph, file, specifier);
+      if (target && /^(apps|packages)\//.test(target)) walk(target);
+    }
+    stack.pop();
+    active.delete(file);
+    done.add(file);
+  };
+  for (const file of graph.keys()) if (/^(apps|packages)\//.test(file)) walk(file);
+  return errors;
+}
+
+export function productionSourceViolations(path: string, source: string): string[] {
+  const errors: string[] = [];
+  // Compatibility names are exact, centralized deployment keys, never new implementation names.
+  const normalized =
+    path === 'apps/api/src/module-support.ts'
+      ? source.replace(/'PHASE(?:01|03)_ENABLED'/g, "'legacy-key'")
+      : source;
+  if (/phase[ _-]?0[0-6]/i.test(path + '\n' + normalized))
+    errors.push(`${path}: production phase-number naming`);
+  const feature = /^packages\/features\/([^/]+)\/src\//.exec(path)?.[1];
+  if (feature) {
+    const parsed = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true);
+    const visit = (node: ts.Node) => {
+      if (ts.isTaggedTemplateExpression(node) && node.tag.getText(parsed) === 'sql') {
+        const sqlText = ts.isNoSubstitutionTemplateLiteral(node.template)
+          ? node.template.text
+          : node.template.head.text +
+            node.template.templateSpans.map((span) => ' ? ' + span.literal.text).join('');
+        for (const match of sqlText.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO|TABLE)\s+([a-z_]+)\./gi)) {
+          if (match[1] !== feature)
+            errors.push(`${path}: ${feature} queries private ${match[1]} tables`);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(parsed);
+  }
+  return errors;
 }
 /** Follow barrels so neutral-looking exports cannot smuggle server code into clients. */
 export function browserGraphViolations(graph: ReadonlyMap<string, readonly string[]>): string[] {
@@ -163,9 +280,10 @@ export function browserGraphViolations(graph: ReadonlyMap<string, readonly strin
           unresolved);
       if (
         specifier.startsWith('node:') ||
-        /^(?:pg|redis|fastify|ws)$/.test(specifier) ||
+        /^(?:pg|redis|fastify|ws|livekit-server-sdk)$/.test(specifier) ||
         (target &&
           (/packages\/adapters\/src\/(postgres|redis)\//.test(target) ||
+            target === 'packages/adapters/src/livekit/server.ts' ||
             /packages\/(?:core|features\/[^/]+)\/src\/server\.ts$/.test(target) ||
             target === 'packages/core/src/sessions.ts' ||
             target.startsWith('apps/api/')))
