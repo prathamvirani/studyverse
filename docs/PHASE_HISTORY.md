@@ -51,3 +51,21 @@ Notes: Real local LiveKit mic/camera/screen forwarding, scoped authorization, pr
 Phase 06 remains the latest accepted implementation baseline. The repository cleanup is maintenance only; Phase 07 has not been activated and requires explicit owner authorization. See [cleanup review](reports/CODEBASE_CLEANUP_REVIEW.md).
 
 Future roadmap (unimplemented): Phase 11 — Social Bonding & Mini-Games (formerly 14); Phase 12 — OBS / Studio Ingest (formerly 11); Phase 13 — Browser Companion Extension (formerly 12); Phase 14 — Native Applications (formerly 13). Phases 00–10 retain their existing order and specifications.
+
+## Phase 07 — Advanced RTC & Quality Control
+
+Status: ACCEPTED
+
+Report: docs/reports/PHASE_07_REPORT.md
+
+Notes: Accepted explicitly by the owner when authorizing Phase 08. The report retains its historical review status; this acceptance supersedes the earlier authorization boundaries.
+
+## Phase 08 — Room Media, Ambience & Shared Mix
+
+Status: AWAITING_REVIEW
+
+Report: docs/reports/PHASE_08_REPORT.md
+
+Spec: docs/phases/PHASE_08_ROOM_MEDIA_AMBIENCE_AND_SHARED_MIX.md
+
+Notes: Shared YouTube, original ambience, local/shared mixing, suggestions and owner-baseline/FFA reconciliation implemented. Complete Phase 00–08 validation passed (280 tests, no skips); a separate two-client real YouTube playback check also passed. Awaiting owner review; Phase 08 is not accepted and Phase 09 remains unauthorized.

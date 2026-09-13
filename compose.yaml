@@ -67,6 +67,7 @@ services:
       IDENTITY_ROOMS_ENABLED: ${IDENTITY_ROOMS_ENABLED:-true}
       POMODORO_ENABLED: ${POMODORO_ENABLED:-true}
       TASKS_ENABLED: ${TASKS_ENABLED:-true}
+      ROOM_MEDIA_ENABLED: ${ROOM_MEDIA_ENABLED:-true}
       BACKGROUNDS_ENABLED: ${BACKGROUNDS_ENABLED:-true}
       RTC_ENABLED: ${RTC_ENABLED:-true}
       LIVEKIT_URL: wss://localhost:8443
@@ -100,6 +101,8 @@ services:
       timeout: 5s
       retries: 12
   web:
+    environment:
+      NUXT_PUBLIC_RTC_QUALITY_STAGE: ${NUXT_PUBLIC_RTC_QUALITY_STAGE:-basic}
     build: { context: ., dockerfile: infra/docker/Dockerfile, target: web }
     depends_on:
       api: { condition: service_healthy }

@@ -1,11 +1,29 @@
-import type { MediaCredential, MediaSource } from '@study/contracts';
+import type {
+  MediaCredential,
+  MediaSource,
+  MediaQualityPreferences,
+  MediaQualityStage,
+} from '@study/contracts';
 import type { Actor, Dispose } from './foundation.ts';
 export interface MediaProfile {
+  resolution?: 'fixed' | 'native';
   width?: number;
   height?: number;
   fps?: number;
   bitrate?: number;
   codec?: string;
+  jitter?: number;
+  rtt?: number;
+  packetsLost?: number;
+  framesDropped?: number;
+  qualityLimitation?: string;
+  encodeTime?: number;
+  decodeTime?: number;
+  sampleRate?: number;
+  channels?: number;
+  echoCancellation?: boolean;
+  noiseSuppression?: boolean;
+  autoGainControl?: boolean;
 }
 export interface MediaTrack {
   id: string;
@@ -17,6 +35,9 @@ export interface MediaTrack {
   stream: MediaStream | null;
   requested: MediaProfile;
   actual: MediaProfile;
+  capture?: MediaProfile;
+  effective?: MediaProfile;
+  warning?: string;
 }
 export interface MediaSnapshot {
   connection: 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
@@ -33,7 +54,12 @@ export interface RealtimeMediaProvider {
   unpublish(source: MediaSource): Promise<void>;
   mute(source: MediaSource, muted: boolean): Promise<void>;
   switchDevice(source: 'microphone' | 'camera', deviceId: string): Promise<void>;
-  receive(trackId: string, surface: ReceiveSurface): void;
+  receive(trackId: string, surface: ReceiveSurface, size?: { width: number; height: number }): void;
+  quality?: {
+    capabilities(): { stage: MediaQualityStage; codecs: string[]; processing: string[] };
+    preferences(): MediaQualityPreferences;
+    apply(preferences: MediaQualityPreferences): Promise<void>;
+  };
   devices(): Promise<MediaDeviceInfo[]>;
 }
 export interface MediaAuthority {

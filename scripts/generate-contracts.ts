@@ -1,3 +1,4 @@
+import { roomMediaModules } from '../apps/api/src/room-media.ts';
 import { backgroundsModules } from '../apps/api/src/backgrounds.ts';
 import { rtcModules } from '../apps/api/src/rtc.ts';
 import { productivityModules } from '../apps/api/src/productivity.ts';
@@ -48,6 +49,7 @@ for (const module of [
   foundation,
   ...productivityModules(inertDb),
   ...backgroundsModules(inertDb),
+  ...roomMediaModules(inertDb, { members: unavailable }),
   ...rtcModules(inertDb, {
     create: unavailable,
     findById: unavailable,

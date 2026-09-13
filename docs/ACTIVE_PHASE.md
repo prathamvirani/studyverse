@@ -1,14 +1,14 @@
 # Active Development Phase
 
-ACTIVE_PHASE: 06
+ACTIVE_PHASE: 08
 
 ACTIVE_SPEC:
-docs/phases/PHASE_06_BASIC_RTC_MIC_CAMERA_AND_SCREEN_SHARE.md
+docs/phases/PHASE_08_ROOM_MEDIA_AMBIENCE_AND_SHARED_MIX.md
 
 STATUS:
-ACCEPTED
+AWAITING_REVIEW
 
-Phase 06 is accepted. Maintenance does not activate another phase; wait for explicit owner authorization before beginning Phase 07.
+Phase 07 is accepted by the owner. Phase 08 implementation and validation are complete and await owner review. Phase 08 is not accepted. Phase 09 is not authorized. See [the Phase 08 report](reports/PHASE_08_REPORT.md).
 
 ## Rules
 

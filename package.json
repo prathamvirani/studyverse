@@ -42,7 +42,9 @@
     "validate:phase03": "npm run validate:phase02",
     "validate:phase04": "npm run validate:phase03",
     "validate:phase05": "npm run validate:phase04",
-    "validate:phase06": "npm run validate:phase05"
+    "validate:phase06": "npm run validate:phase05",
+    "validate:phase07": "npm run validate:phase06",
+    "validate:phase08": "npm run validate:phase07"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

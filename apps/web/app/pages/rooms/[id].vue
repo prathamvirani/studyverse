@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { roomSchema, inviteCreatedSchema, invitesSchema, okSchema } from '@study/contracts';
+import {
+  mediaQualityStageSchema,
+  roomSchema,
+  inviteCreatedSchema,
+  invitesSchema,
+  okSchema,
+} from '@study/contracts';
 import type { Room, z } from '@study/contracts';
+import { registerRoomMedia } from '../../room/room-media';
+let roomMedia: ReturnType<typeof registerRoomMedia> | undefined;
 import { registerBackgrounds } from '../../room/backgrounds';
 import { createRealtimeClient } from '../../lib/realtime';
 import { registerProductivity } from '../../room/productivity';
@@ -12,6 +20,7 @@ import { createLiveKitProvider } from '@study/adapters/livekit/browser';
 let media: ReturnType<typeof registerRtc> | undefined;
 import { socialKey, statusLabels } from '../../lib/social';
 import { registerRoomSocial } from '../../room/social';
+const config = useRuntimeConfig();
 const social = inject(socialKey)!;
 const immersive = useState('immersive-room', () => false);
 let composition: ReturnType<typeof createRoomComposition> | undefined;
@@ -20,6 +29,7 @@ let disposed = false,
 function leave() {
   entryGeneration++;
   void media?.dispose();
+  roomMedia?.dispose();
   stopProductivity?.();
   social.room(null);
   entered.value = false;
@@ -38,6 +48,7 @@ onUnmounted(() => {
   disposed = true;
   entryGeneration++;
   void media?.dispose();
+  roomMedia?.dispose();
   stopProductivity?.();
   social.room(null);
   immersive.value = false;
@@ -85,7 +96,9 @@ async function enter() {
     composition = createRoomComposition(profile.value!.displayName, invitations);
     media = registerRtc(
       composition,
-      createLiveKitProvider(),
+      createLiveKitProvider(
+        mediaQualityStageSchema.safeParse(config.public.rtcQualityStage).data ?? 'basic',
+      ),
       api,
       room.value.id,
       profile.value!.id,
@@ -103,6 +116,7 @@ async function enter() {
     stopProductivity?.();
     const realtime = createRealtimeClient();
     registerBackgrounds(composition.ui, room.value.id, profile.value!.id, realtime);
+    roomMedia = registerRoomMedia(composition, room.value.id, profile.value!.id, realtime);
     stopProductivity = registerProductivity(composition.ui, room.value.id, realtime);
     social.room(room.value.id);
     immersive.value = true;

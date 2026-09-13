@@ -4,13 +4,26 @@ import {
   Track,
   TrackEvent,
   VideoQuality,
-  VideoPreset,
   createLocalAudioTrack,
   createLocalVideoTrack,
   createLocalScreenTracks,
 } from 'livekit-client';
 import type { LocalTrack, RemoteTrackPublication, TrackPublication } from 'livekit-client';
-import { mediaCaps } from '@study/contracts';
+import {
+  effectiveVideo,
+  qualityPreset,
+  mediaQualitySchema,
+  mediaQualityStageSchema,
+  receiveTarget,
+  voiceProfile,
+} from '@study/contracts';
+import type { MediaQualityPreferences, MediaQualityStage } from '@study/contracts';
+import {
+  audioConstraints,
+  captureConstraints,
+  codecCapabilities,
+  publishOptions,
+} from './quality.ts';
 import type { MediaCredential, MediaSource } from '@study/contracts';
 import type {
   MediaSnapshot,
@@ -26,19 +39,27 @@ const sourceMap = {
 };
 const sourceOf = (p: TrackPublication): MediaSource | undefined =>
   (Object.keys(sourceMap) as MediaSource[]).find((s) => sourceMap[s] === p.source);
-const constraints = (s: 'camera' | 'screen') => ({
-  width: { ideal: mediaCaps[s].width, max: mediaCaps[s].width },
-  height: { ideal: mediaCaps[s].height, max: mediaCaps[s].height },
-  frameRate: { ideal: 30, max: 30 },
-});
-
-export function createLiveKitProvider(): RealtimeMediaProvider {
+export function createLiveKitProvider(stage: MediaQualityStage = 'basic'): RealtimeMediaProvider {
+  mediaQualityStageSchema.parse(stage);
+  let preferences = qualityPreset('balanced');
+  const warnings = new Map<MediaSource, string>();
+  const applied = new Map<MediaSource, MediaQualityPreferences>();
+  let applyRevision = 0;
+  let operation: Promise<void> = Promise.resolve();
+  const serial = (fn: () => Promise<void>) => {
+    const next = operation.then(fn);
+    operation = next.catch(() => {});
+    return next;
+  };
   const room = new Room({ adaptiveStream: false, dynacast: true, disconnectOnPageLeave: true });
   const listeners = new Set<() => void>(),
     local = new Map<MediaSource, LocalTrack>();
   const remote = new Map<string, RemoteTrackPublication>(),
     streams = new Map<string, MediaStream>();
-  const surfaces = new Map<string, ReceiveSurface>();
+  const surfaces = new Map<
+    string,
+    { surface: ReceiveSurface; size?: { width: number; height: number } }
+  >();
   const measurements = new Map<string, { bytes: number; at: number }>();
   let snapshot: MediaSnapshot = { connection: 'disconnected', tracks: [] },
     credential: MediaCredential | null = null;
@@ -46,7 +67,7 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
     timer: ReturnType<typeof setInterval> | undefined,
     statsBusy = false;
   const busy = new Set<MediaSource>();
-  let voice: 'standard' | 'high' = 'standard';
+  const captureSettled = new Set<() => void>();
   const changed = () => {
     for (const f of listeners) f();
   };
@@ -74,9 +95,31 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
           stream: streams.get(p.trackSid) ?? null,
           requested: isLocal
             ? source === 'microphone'
-              ? { bitrate: voice === 'high' ? 96000 : 64000 }
-              : { ...mediaCaps[source] }
-            : {},
+              ? { ...preferences.audio, codec: 'opus' }
+              : requestedVideo(source)
+            : (snapshot.tracks.find((t) => t.id === p.trackSid)?.requested ?? {}),
+          ...(isLocal
+            ? {
+                effective:
+                  source === 'microphone'
+                    ? { ...(applied.get(source) ?? preferences).audio, codec: 'opus' }
+                    : {
+                        ...effectiveVideo(
+                          (applied.get(source) ?? preferences)[source],
+                          source,
+                          stage,
+                        ),
+                        fps:
+                          effectiveVideo(
+                            (applied.get(source) ?? preferences)[source],
+                            source,
+                            stage,
+                          ).fps ?? 30,
+                      },
+                capture: captureSettings(raw),
+                warning: warnings.get(source) ?? '',
+              }
+            : {}),
           actual: snapshot.tracks.find((t) => t.id === p.trackSid)?.actual ?? {},
         });
       }
@@ -107,7 +150,7 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
   room.on(RoomEvent.Reconnected, () => {
     snapshot = { ...snapshot, connection: 'connected' };
     sync();
-    for (const [id, s] of surfaces) receive(id, s);
+    for (const [id, s] of surfaces) receive(id, s.surface, s.size);
   });
   room.on(RoomEvent.Disconnected, () => {
     generation++;
@@ -125,12 +168,17 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
   async function stats() {
     if (statsBusy) return;
     statsBusy = true;
+    const epoch = generation;
     try {
       for (const participant of [room.localParticipant, ...room.remoteParticipants.values()])
         for (const p of participant.trackPublications.values()) {
-          const report = await p.track?.getRTCStatsReport();
+          const report = await p.track?.getRTCStatsReport().catch(() => undefined);
+          if (epoch !== generation) return;
           const item = snapshot.tracks.find((t) => t.id === p.trackSid);
-          if (!item || !report) continue;
+          if (!item) continue;
+          item.actual = {};
+          if (item.local) item.capture = captureSettings(p.track?.mediaStreamTrack);
+          if (!report || (!item.local && surfaces.get(item.id)?.surface === 'hidden')) continue;
           const actual: MediaTrack['actual'] = {};
           report.forEach((stat) => {
             if (stat.type === 'outbound-rtp' || stat.type === 'inbound-rtp') {
@@ -150,8 +198,32 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
                     Math.round(((bytes - previous.bytes) * 8000) / (stat.timestamp - previous.at));
                 measurements.set(key, { bytes, at: stat.timestamp });
               }
+              for (const [key, field] of Object.entries({
+                jitter: 'jitter',
+                packetsLost: 'packetsLost',
+                framesDropped: 'framesDropped',
+                encodeTime: 'totalEncodeTime',
+                decodeTime: 'totalDecodeTime',
+              })) {
+                if (Number.isFinite(stat[field])) Object.assign(actual, { [key]: stat[field] });
+              }
+              if (typeof stat.qualityLimitationReason === 'string')
+                actual.qualityLimitation = stat.qualityLimitationReason;
               const codec = report.get(stat.codecId);
-              if (codec?.mimeType) actual.codec = codec.mimeType;
+              if (codec?.mimeType && !/\/(rtx|red|ulpfec)$/i.test(codec.mimeType))
+                actual.codec = codec.mimeType;
+              if (stat.kind === 'audio' && codec) {
+                if (Number.isFinite(codec.clockRate)) actual.sampleRate = codec.clockRate;
+                if (Number.isFinite(codec.channels)) actual.channels = codec.channels;
+              }
+            }
+            if (stat.type === 'remote-inbound-rtp') {
+              if (Number.isFinite(stat.roundTripTime))
+                actual.rtt = Math.max(actual.rtt ?? 0, stat.roundTripTime);
+              if (Number.isFinite(stat.jitter))
+                actual.jitter = Math.max(actual.jitter ?? 0, stat.jitter);
+              if (Number.isFinite(stat.packetsLost))
+                actual.packetsLost = (actual.packetsLost ?? 0) + stat.packetsLost;
             }
           });
           item.actual = actual;
@@ -165,31 +237,175 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
       statsBusy = false;
     }
   }
-  function receive(id: string, surface: ReceiveSurface) {
-    surfaces.set(id, surface);
+  function captureSettings(raw?: MediaStreamTrack) {
+    const settings = raw?.getSettings?.() ?? {};
+    return Object.fromEntries(
+      Object.entries({
+        width: settings.width,
+        height: settings.height,
+        fps: settings.frameRate,
+        sampleRate: settings.sampleRate,
+        channels: settings.channelCount,
+        echoCancellation: settings.echoCancellation,
+        noiseSuppression: settings.noiseSuppression,
+        autoGainControl: settings.autoGainControl,
+      }).filter(([, v]) => v !== undefined),
+    );
+  }
+  function requestedVideo(source: 'camera' | 'screen') {
+    const { fps, ...rest } = preferences[source];
+    return { ...rest, ...(fps === null ? {} : { fps }) };
+  }
+  function receive(id: string, surface: ReceiveSurface, size?: { width: number; height: number }) {
+    surfaces.set(id, { surface, ...(size ? { size } : {}) });
     const publication = remote.get(id);
     if (!publication) return;
     publication.setSubscribed(surface !== 'hidden');
     if (publication.kind === 'video') {
+      const source = publication.source === Track.Source.Camera ? 'camera' : 'screen';
+      const ceiling = effectiveVideo(
+        preferences[source === 'camera' ? 'cameraReceive' : 'screenReceive'],
+        source,
+        stage,
+      );
+      const target = receiveTarget(ceiling, surface, size);
+      const item = snapshot.tracks.find((t) => t.id === id);
+      if (item) item.requested = target;
+      if (surface === 'hidden') {
+        if (item) item.actual = {};
+        return;
+      }
       publication.setVideoQuality(surface === 'circle' ? VideoQuality.LOW : VideoQuality.HIGH);
-      publication.setVideoDimensions(
-        surface === 'circle'
-          ? { width: 640, height: 360 }
-          : publication.source === Track.Source.Camera
-            ? { width: 1280, height: 720 }
-            : { width: 1920, height: 1080 },
+      publication.setVideoDimensions({ width: target.width, height: target.height });
+      publication.setVideoFPS?.(target.fps);
+    }
+  }
+  async function constrain(track: LocalTrack, source: MediaSource, prefs: MediaQualityPreferences) {
+    if (source !== 'microphone') {
+      const requested = prefs[source];
+      if (requested.codec !== 'auto' && !codecCapabilities().includes(requested.codec))
+        warnings.set(source, 'Requested codec is unavailable; provider Auto negotiation selected.');
+    }
+    try {
+      if (source === 'microphone')
+        await track.mediaStreamTrack.applyConstraints(audioConstraints(prefs.audio));
+      else {
+        const p = effectiveVideo(prefs[source], source, stage);
+        await track.mediaStreamTrack.applyConstraints(
+          captureConstraints(p, prefs[source].fps === null),
+        );
+        track.mediaStreamTrack.contentHint = p.content;
+      }
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !['OverconstrainedError', 'NotSupportedError'].includes(error.name)
+      )
+        throw error;
+      warnings.set(
+        source,
+        'Capture constraints unsupported; retained source settings. Encoder ceiling still requested.',
       );
     }
+  }
+  async function apply(next: MediaQualityPreferences) {
+    const parsed = mediaQualitySchema.parse(next);
+    const revision = ++applyRevision,
+      epoch = generation;
+    preferences = parsed;
+    return serial(async () => {
+      if (busy.size) await new Promise<void>((resolve) => captureSettled.add(resolve));
+      if (revision !== applyRevision || epoch !== generation) return;
+      for (const source of ['microphone', 'camera', 'screen'] as const) {
+        const t = local.get(source),
+          previous = applied.get(source);
+        if (
+          !t ||
+          JSON.stringify(previous?.[source === 'microphone' ? 'audio' : source]) ===
+            JSON.stringify(parsed[source === 'microphone' ? 'audio' : source])
+        )
+          continue;
+        warnings.delete(source);
+        await constrain(t, source, parsed);
+        if (epoch !== generation || local.get(source) !== t) {
+          t.stop();
+          return;
+        }
+        if (
+          previous &&
+          (source === 'microphone' ||
+            (previous[source].width === parsed[source].width &&
+              previous[source].height === parsed[source].height &&
+              previous[source].resolution === parsed[source].resolution)) &&
+          JSON.stringify(publishOptions(source, previous, stage)) ===
+            JSON.stringify(publishOptions(source, parsed, stage))
+        ) {
+          applied.set(source, parsed);
+          continue;
+        }
+        // Renegotiate encoding/layers on the existing capture; no device restart or display picker.
+        await room.localParticipant.unpublishTrack(t, false);
+        if (epoch !== generation || local.get(source) !== t) {
+          t.stop();
+          return;
+        }
+        try {
+          await room.localParticipant.publishTrack(t, {
+            ...publishOptions(source, parsed, stage),
+            source: sourceMap[source],
+          });
+          applied.set(source, parsed);
+        } catch {
+          if (epoch !== generation || local.get(source) !== t) {
+            t.stop();
+            return;
+          }
+          const fallback = previous ?? qualityPreset('balanced');
+          await constrain(t, source, fallback);
+          try {
+            await room.localParticipant.publishTrack(t, {
+              ...publishOptions(source, fallback, stage),
+              source: sourceMap[source],
+            });
+          } catch (error) {
+            await unpublish(source).catch(() => {});
+            throw error;
+          }
+          warnings.set(source, 'Profile negotiation failed; previous encoding retained.');
+        }
+        if (epoch !== generation || local.get(source) !== t) {
+          t.stop();
+          return;
+        }
+      }
+      for (const [id, s] of surfaces) receive(id, s.surface, s.size);
+      sync();
+    });
   }
   async function unpublish(source: MediaSource) {
     const track = local.get(source);
     if (!track) return;
     local.delete(source);
+    applied.delete(source);
+    warnings.delete(source);
     track.stop();
     await room.localParticipant.unpublishTrack(track, true);
     sync();
   }
   return {
+    quality: {
+      capabilities: () => ({
+        stage,
+        codecs: codecCapabilities(),
+        processing: Object.entries(
+          globalThis.navigator?.mediaDevices?.getSupportedConstraints?.() ?? {},
+        )
+          .filter(([, v]) => v)
+          .map(([k]) => k),
+      }),
+      preferences: () => structuredClone(preferences),
+      apply,
+    },
     snapshot: () => snapshot,
     listen(fn) {
       listeners.add(fn);
@@ -232,37 +448,52 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
       snapshot = { connection: 'disconnected', tracks: [] };
       changed();
     },
-    async publish(source, deviceId, voiceMode = 'standard') {
+    async publish(source, deviceId, voiceMode) {
       if (snapshot.connection !== 'connected' || !credential?.sources.includes(source))
         throw new Error('Media unavailable');
       if (busy.has(source) || local.has(source)) throw new Error('Publication already active');
       busy.add(source);
-      if (source === 'microphone') voice = voiceMode;
+      warnings.delete(source);
+      if (source === 'microphone' && voiceMode) preferences.audio = voiceProfile(voiceMode);
+      const prefs = structuredClone(preferences);
       const epoch = generation;
       let track: LocalTrack | undefined;
       try {
-        // SDK subclass declaration is incompatible with exactOptionalPropertyTypes; runtime is LocalTrack.
+        // SDK subclass declarations mismatch exactOptionalPropertyTypes; runtime is LocalTrack.
         if (source === 'microphone')
           track = (await createLocalAudioTrack({
-            echoCancellation: true,
-            noiseSuppression: voice === 'standard',
-            autoGainControl: voice === 'standard',
+            ...audioConstraints(prefs.audio),
             ...(deviceId ? { deviceId } : {}),
           })) as unknown as LocalTrack;
-        else if (source === 'camera') {
-          track = await createLocalVideoTrack({
-            resolution: { width: 1280, height: 720, frameRate: 30 },
-            ...(deviceId ? { deviceId } : {}),
-          });
-          await track.mediaStreamTrack.applyConstraints(constraints('camera'));
-        } else {
-          const captured = await createLocalScreenTracks({
-            audio: false,
-            resolution: { width: 1920, height: 1080, frameRate: 30 },
-          });
-          track = captured.find((t) => t.kind === 'video');
-          for (const t of captured) if (t !== track) t.stop();
-          await track?.mediaStreamTrack.applyConstraints(constraints('screen'));
+        else {
+          const p = effectiveVideo(prefs[source], source, stage);
+          const resolution =
+            p.resolution === 'native'
+              ? {}
+              : {
+                  resolution: {
+                    width: p.width,
+                    height: p.height,
+                    ...(prefs[source].fps === null ? {} : { frameRate: p.fps ?? 30 }),
+                  },
+                };
+          if (source === 'camera') {
+            try {
+              track = await createLocalVideoTrack({
+                ...resolution,
+                ...(deviceId ? { deviceId } : {}),
+              });
+            } catch (e) {
+              if (!(e instanceof Error) || e.name !== 'OverconstrainedError') throw e;
+              track = await createLocalVideoTrack({ ...(deviceId ? { deviceId } : {}) });
+              warnings.set(source, 'Requested capture unsupported; device default selected.');
+            }
+          } else {
+            const captured = await createLocalScreenTracks({ audio: false, ...resolution });
+            track = captured.find((t) => t.kind === 'video');
+            for (const t of captured) if (t !== track) t.stop();
+          }
+          if (track) await constrain(track, source, prefs);
         }
         if (!track) throw new Error('Device unavailable');
         if (epoch !== generation) {
@@ -271,20 +502,25 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
         }
         local.set(source, track);
         track.on(TrackEvent.Ended, () => {
-          void unpublish(source).catch(sync);
+          if (local.get(source) === track) void unpublish(source).catch(sync);
         });
-        await room.localParticipant.publishTrack(track, {
-          source: sourceMap[source],
-          audioPreset: { maxBitrate: voice === 'high' ? 96_000 : 64_000 },
-          ...(source === 'microphone'
-            ? {}
-            : {
-                videoEncoding: { maxBitrate: mediaCaps[source].bitrate, maxFramerate: 30 },
-                simulcast: source === 'camera',
-                videoSimulcastLayers:
-                  source === 'camera' ? [new VideoPreset(640, 360, 400_000, 30)] : [],
-              }),
-        });
+        applied.set(source, prefs);
+        try {
+          await room.localParticipant.publishTrack(track, {
+            ...publishOptions(source, prefs, stage),
+            source: sourceMap[source],
+          });
+        } catch (error) {
+          if (epoch !== generation || source === 'microphone') throw error;
+          const fallback = qualityPreset('balanced');
+          await constrain(track, source, fallback);
+          await room.localParticipant.publishTrack(track, {
+            ...publishOptions(source, fallback, stage),
+            source: sourceMap[source],
+          });
+          applied.set(source, fallback);
+          warnings.set(source, 'Requested encoding unavailable; Balanced fallback selected.');
+        }
         if (epoch !== generation) {
           await unpublish(source);
           return;
@@ -298,6 +534,10 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
         throw error;
       } finally {
         busy.delete(source);
+        if (!busy.size) {
+          for (const resolve of captureSettled) resolve();
+          captureSettled.clear();
+        }
       }
     },
     unpublish,
@@ -312,21 +552,35 @@ export function createLiveKitProvider(): RealtimeMediaProvider {
       const t = local.get(source);
       if (!t) throw new Error('No active track');
       const epoch = generation;
-      await t.restartTrack(
-        source === 'camera'
-          ? { deviceId, resolution: { width: 1280, height: 720, frameRate: 30 } }
-          : {
-              deviceId,
-              echoCancellation: true,
-              noiseSuppression: voice === 'standard',
-              autoGainControl: voice === 'standard',
-            },
-      );
-      if (epoch !== generation) {
-        t.stop();
-        return;
-      }
-      if (source === 'camera') await t.mediaStreamTrack.applyConstraints(constraints('camera'));
+      await serial(async () => {
+        if (epoch !== generation || local.get(source) !== t) return;
+        await t.restartTrack(
+          source === 'camera'
+            ? {
+                deviceId,
+                ...(preferences.camera.resolution === 'native'
+                  ? {}
+                  : {
+                      resolution: {
+                        width: effectiveVideo(preferences.camera, 'camera', stage).width,
+                        height: effectiveVideo(preferences.camera, 'camera', stage).height,
+                        ...(preferences.camera.fps === null
+                          ? {}
+                          : {
+                              frameRate:
+                                effectiveVideo(preferences.camera, 'camera', stage).fps ?? 30,
+                            }),
+                      },
+                    }),
+              }
+            : { deviceId, ...audioConstraints(preferences.audio) },
+        );
+        if (epoch !== generation || local.get(source) !== t) {
+          t.stop();
+          return;
+        }
+        await constrain(t, source, preferences);
+      });
       sync();
     },
     receive,

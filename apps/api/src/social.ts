@@ -4,7 +4,7 @@ import { roomDirectory } from '@study/rooms/server';
 import { friendsModule, socialDirectory } from '@study/friends/server';
 import { createPresence } from '@study/presence/server';
 import type { Database, EphemeralStore, SessionStore } from '@study/feature-sdk';
-export function socialModules(
+export function socialComposition(
   db: Database,
   store: EphemeralStore,
   sessions: SessionStore,
@@ -14,8 +14,13 @@ export function socialModules(
     social = socialDirectory(db),
     rooms = roomDirectory(db, social);
   const presence = createPresence({ store, sessions, people, social, rooms, fail, enabled });
-  return [
+  const modules = [
     friendsModule({ db, people, social, rooms, fail, enabled, presence: presence.directory }),
     presence.module,
   ];
+  return { modules, occupancy: presence.occupancy };
+}
+
+export function socialModules(...args: Parameters<typeof socialComposition>) {
+  return socialComposition(...args).modules;
 }

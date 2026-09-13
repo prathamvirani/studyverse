@@ -1,7 +1,6 @@
 import { createApp, h } from 'vue';
 import { createRoomComposition } from '../../apps/web/app/room/composition.ts';
 import { registerRtc } from '../../apps/web/app/room/rtc.ts';
-// @ts-expect-error SFC compiled by the isolated browser harness.
 import RoomShell from '../../apps/web/app/components/room/RoomShell.vue';
 import type { RealtimeMediaProvider, MediaSnapshot } from '@study/feature-sdk';
 import type { MediaSource } from '@study/contracts';

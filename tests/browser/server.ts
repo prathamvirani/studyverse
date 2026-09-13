@@ -1,3 +1,4 @@
+import { roomMediaModules } from '../../apps/api/src/room-media.ts';
 import { backgroundsModules } from '../../apps/api/src/backgrounds.ts';
 import { rtcModules } from '../../apps/api/src/rtc.ts';
 import { rtcBundle } from './rtc-bundle.ts';
@@ -20,7 +21,7 @@ import {
 import { identityModule, identityAccounts } from '@study/identity/server';
 import { roomsModule } from '@study/rooms/server';
 import { socialDirectory } from '@study/friends/server';
-import { socialModules } from '../../apps/api/src/social.ts';
+import { socialComposition } from '../../apps/api/src/social.ts';
 import { createRedis, RedisEphemeralStore } from '@study/adapters/redis';
 import { applicationMigrationManifest } from '../../scripts/application-migrations.ts';
 import { dummyModule, ids } from '../fixtures/dummy-module.ts';
@@ -64,6 +65,7 @@ const sessions = new Sessions(new PostgresSessionStore(db)),
 const redis = createRedis(`redis://:${local.REDIS_PASSWORD}@localhost:6380`);
 redis.on('error', () => {});
 await redis.connect();
+const social = socialComposition(db, new RedisEphemeralStore(redis), new PostgresSessionStore(db));
 const { app } = await createServer({
   sessions,
   limiter: new MemoryLimiter(),
@@ -95,7 +97,8 @@ const { app } = await createServer({
       fail,
       social: socialDirectory(db),
     }),
-    ...socialModules(db, new RedisEphemeralStore(redis), new PostgresSessionStore(db)),
+    ...social.modules,
+    ...roomMediaModules(db, social.occupancy),
     ...rtcModules(db, new PostgresSessionStore(db), {
       RTC_ENABLED: 'true',
       LIVEKIT_ROOM_PREFIX: 'test-study-',
@@ -140,7 +143,8 @@ const disabledRtc = await createServer({
 });
 await disabledRtc.app.listen({ host: '127.0.0.1', port: 3010 });
 const web = spawn(process.execPath, ['apps/web/.output/server/index.mjs'], {
-  env: { ...process.env, HOST: '127.0.0.1', PORT: '3008' },
+  // Stage A is exercised only by the isolated test deployment; product default stays basic.
+  env: { ...process.env, HOST: '127.0.0.1', PORT: '3008', NUXT_PUBLIC_RTC_QUALITY_STAGE: 'a' },
   stdio: 'inherit',
   windowsHide: true,
 });

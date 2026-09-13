@@ -1,6 +1,6 @@
 # Current codebase architecture
 
-The latest accepted implementation baseline is Phase 06. This document describes current ownership after maintenance; numbered architecture plans and accepted reports record the decisions made during implementation. Phase 07 and the reordered future roadmap require explicit owner authorization.
+Phase 07 is accepted. Phase 08 is explicitly authorized; its implementation is described in [room media architecture](ROOM_MEDIA.md). Advanced RTC remains described in [advanced RTC architecture](PHASE_07_RTC.md). Phase 09 and the later roadmap remain unauthorized.
 
 ## Composition and dependency direction
 
@@ -28,4 +28,6 @@ Deployment compatibility is deliberately narrow: `PHASE01_ENABLED` and `PHASE03_
 
 ## Preserved operating limits
 
-One API process owns the application observation index and each RTC namespace. Events remain process-local; no distributed outbox, subscription system or new retention policy is added. Basic media quality remains trusted-client 720p30 camera/1080p30 screen policy, with server/provider-enforced scoped grants. Existing self-hosted LiveKit replay/removal and outage bounds remain as documented in [RTC architecture](PHASE_06_RTC.md). No migration, session, privacy, room permission, media grant or higher-quality tier is changed by maintenance.
+One API process owns the application observation index and each RTC namespace. Events remain process-local; no distributed outbox, subscription system or new retention policy is added. Basic media quality remains trusted-client 720p30 camera/1080p30 screen policy, with server/provider-enforced scoped grants. Phase 07 adds opt-in, deployment-gated quality preferences through the existing provider. Existing self-hosted LiveKit replay/removal and outage bounds remain as documented in [RTC architecture](PHASE_06_RTC.md). No migration, session, privacy, room permission or media grant is changed.
+
+Room media is composed through `room-media.ts`, `@study/room-media` and a YouTube provider adapter. It consumes the presence-owned server occupancy port/event, room authorization and social/identity ports. It adds no feature dependency to RoomShell, productivity or RTC.

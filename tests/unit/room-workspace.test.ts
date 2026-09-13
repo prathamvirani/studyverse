@@ -108,7 +108,7 @@ it('honors tile capability flags and rolls back failed lifecycle opening', () =>
 it('registers canonical zones and future menu/settings contributions independently', () => {
   const demo = createRoomComposition('Test', () => {});
   expect(demo.ui.at('rightRail')).toEqual([]);
-  expect(demo.ui.at('bottomDock').map((x) => x.label)).toEqual(['Media', 'More']);
+  expect(demo.ui.at('bottomDock').map((x) => x.label)).toEqual(['More']);
   expect(demo.ui.at('participantContextMenu')).toHaveLength(0);
   demo.ui.register('future.settings', {
     id: 'future.settings',

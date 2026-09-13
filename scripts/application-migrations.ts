@@ -1,3 +1,4 @@
+import { roomMediaDefinition } from '@study/room-media/server';
 import { backgroundsDefinition } from '@study/backgrounds/server';
 import { pomodoroDefinition } from '@study/pomodoro/server';
 import { tasksDefinition } from '@study/tasks/server';
@@ -18,14 +19,15 @@ export async function applicationMigrationManifest() {
       tasksDefinition,
       chatDefinition,
       backgroundsDefinition,
+      roomMediaDefinition,
     ].map(async (definition) => ({
       ...definition,
       migrations: [
         {
           owner: definition.id,
-          id: `0001_${definition.id}`,
+          id: `0001_${definition.id.replaceAll('-', '_')}`,
           sql: await readFile(
-            `packages/features/${definition.id}/migrations/0001_${definition.id}.sql`,
+            `packages/features/${definition.id}/migrations/0001_${definition.id.replaceAll('-', '_')}.sql`,
             'utf8',
           ),
         },

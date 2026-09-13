@@ -9,7 +9,8 @@
     "./oauth": "./src/oauth/index.ts",
     "./postgres": "./src/postgres/index.ts",
     "./redis": "./src/redis/index.ts",
-    "./indexeddb": "./src/indexeddb/index.ts"
+    "./indexeddb": "./src/indexeddb/index.ts",
+    "./youtube/browser": "./src/youtube/browser.ts"
   },
   "dependencies": {
     "@study/contracts": "0.0.0",

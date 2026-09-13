@@ -24,4 +24,6 @@ The coordination files do not override the umbrella specification and are not a 
 - **Phase 13:** [Browser Companion Extension](./PHASE_13_BROWSER_COMPANION_EXTENSION.md)
 - **Phase 14:** [Native Applications](./PHASE_14_NATIVE_APPLICATIONS.md)
 
-Social Bonding follows media/music because optional break activities are part of the core social study experience. OBS, extension and native clients follow as power-user/platform expansions. Sequence does not imply a functional dependency; see each specification’s prerequisites. Phase 06 remains the latest accepted baseline, and Phase 07 requires explicit owner authorization.
+Social Bonding follows media/music because optional break activities are part of the core social study experience. OBS, extension and native clients follow as power-user/platform expansions. Sequence does not imply a functional dependency; see each specification’s prerequisites. Phase 07 is the latest accepted baseline. Phase 08 was explicitly authorized on 2026-09-13.
+
+Current authorization: Phase 07 accepted; Phase 08 implementation complete and awaiting owner review. Phase 09 is not authorized. See `../ACTIVE_PHASE.md`.

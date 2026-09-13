@@ -17,6 +17,7 @@ COPY --from=build --chown=node:node /app/packages/features/pomodoro/migrations .
 COPY --from=build --chown=node:node /app/packages/features/tasks/migrations ./packages/features/tasks/migrations
 COPY --from=build --chown=node:node /app/packages/features/chat/migrations ./packages/features/chat/migrations
 COPY --from=build --chown=node:node /app/packages/features/backgrounds/migrations ./packages/features/backgrounds/migrations
+COPY --from=build --chown=node:node /app/packages/features/room-media/migrations ./packages/features/room-media/migrations
 USER node
 EXPOSE 3001
 CMD ["node", "dist/api/main.mjs"]

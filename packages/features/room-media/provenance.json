@@ -1,0 +1,32 @@
+{
+  "sources": [
+    {
+      "id": "rain",
+      "creator": "Study platform project",
+      "source": "src/ambience.ts:noiseSamples",
+      "license": "Project-owned original procedural implementation; no third-party recordings or samples",
+      "attributionRequired": false
+    },
+    {
+      "id": "white",
+      "creator": "Study platform project",
+      "source": "src/ambience.ts:noiseSamples",
+      "license": "Project-owned original procedural implementation; no third-party recordings or samples",
+      "attributionRequired": false
+    },
+    {
+      "id": "pink",
+      "creator": "Study platform project",
+      "source": "src/ambience.ts:noiseSamples",
+      "license": "Project-owned original procedural implementation; no third-party recordings or samples",
+      "attributionRequired": false
+    },
+    {
+      "id": "brown",
+      "creator": "Study platform project",
+      "source": "src/ambience.ts:noiseSamples",
+      "license": "Project-owned original procedural implementation; no third-party recordings or samples",
+      "attributionRequired": false
+    }
+  ]
+}

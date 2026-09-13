@@ -128,3 +128,26 @@ it('allows public contracts and registered browser adapters', () => {
   expect(importViolations('apps/web/app/registry.ts', '@study/core/browser')).toEqual([]);
   expect(importViolations('apps/web/app/preferences.ts', '@study/adapters/indexeddb')).toEqual([]);
 });
+
+it('room media preserves feature-owned SQL and follows the YouTube adapter browser graph', () => {
+  expect(
+    productionSourceViolations(
+      'packages/features/room-media/src/server.ts',
+      'const q=sql`SELECT baseline FROM room_media.baselines`;',
+    ),
+  ).toEqual([]);
+  expect(
+    productionSourceViolations(
+      'packages/features/room-media/src/server.ts',
+      'const q=sql`SELECT * FROM identity.users`;',
+    ),
+  ).not.toEqual([]);
+  expect(
+    browserGraphViolations(
+      new Map([
+        ['apps/web/app/example.ts', ['@study/adapters/youtube/browser']],
+        ['packages/adapters/src/youtube/browser.ts', ['node:crypto']],
+      ]),
+    ),
+  ).not.toEqual([]);
+});

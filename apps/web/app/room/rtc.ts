@@ -10,6 +10,8 @@ import type { MediaSource } from '@study/contracts';
 import type { MediaTrack, RealtimeMediaProvider } from '@study/feature-sdk';
 import type { TileInstance } from '@study/core/browser';
 import { createMediaSession } from '@study/rtc/browser';
+import { createQualityModel } from './rtc-quality.ts';
+import MediaQuality from '../components/room/MediaQuality.vue';
 import type { createApiClient } from '../lib/api-client.ts';
 import type { RoomComposition } from './composition.ts';
 
@@ -24,6 +26,20 @@ export function mediaRenderer(
     setup() {
       const host = ref<HTMLElement>();
       let current: string | undefined;
+      let intersecting = true;
+      let resize: ResizeObserver | undefined, intersection: IntersectionObserver | undefined;
+      function receiveVisible() {
+        const t = track();
+        if (!t || !host.value) return;
+        const size = host.value.getBoundingClientRect();
+        const visible =
+          t.source === 'microphone' ||
+          (!document.hidden && intersecting && size.width > 0 && size.height > 0);
+        provider.receive(t.id, visible ? surface : 'hidden', {
+          width: size.width,
+          height: size.height,
+        });
+      }
       let dispose: (() => void) | undefined;
       function render() {
         const t = track();
@@ -58,7 +74,7 @@ export function mediaRenderer(
         el.dataset.mediaTrack = t.id;
         if (el.srcObject !== t.stream) el.srcObject = t.stream;
         if (el.parentElement !== host.value) host.value.append(el);
-        provider.receive(t.id, surface);
+        receiveVisible();
         void el.play().catch(() => {
           el!.controls = true;
         });
@@ -66,9 +82,20 @@ export function mediaRenderer(
       onMounted(() => {
         render();
         dispose = provider.listen(render);
+        resize = new ResizeObserver(receiveVisible);
+        if (host.value) resize.observe(host.value);
+        intersection = new IntersectionObserver(([entry]) => {
+          intersecting = entry?.isIntersecting ?? false;
+          receiveVisible();
+        });
+        if (host.value) intersection.observe(host.value);
+        document.addEventListener('visibilitychange', receiveVisible);
       });
       onUnmounted(() => {
         dispose?.();
+        resize?.disconnect();
+        intersection?.disconnect();
+        document.removeEventListener('visibilitychange', receiveVisible);
         if (current) {
           const el = elements.get(current);
           if (el && el.parentElement === host.value) {
@@ -147,6 +174,7 @@ export function registerRtc(
       project();
     },
   );
+  const quality = provider.quality ? createQualityModel(provider, userId) : undefined;
   const trackFor = (id: string) => {
     void revision.value;
     return session.state.snapshot.tracks.find(
@@ -302,7 +330,9 @@ export function registerRtc(
             {
               'aria-label': `${label} ${active ? 'on' : 'off'}`,
               'aria-pressed': active,
-              disabled: session.state.busy.has(source),
+              disabled:
+                session.state.busy.has(source) ||
+                (quality && (!quality.state.ready || quality.state.busy)),
               onClick: () => void session.toggle(source),
             },
             [
@@ -439,34 +469,40 @@ export function registerRtc(
             ]),
           ),
           h('button', { onClick: () => void session.refreshDevices() }, 'Refresh devices'),
-          h('label', [
-            'Voice preset',
-            h(
-              'select',
-              {
-                'aria-label': 'Voice preset',
-                value: session.state.voice,
-                disabled:
-                  session.state.busy.has('microphone') ||
-                  session.state.snapshot.tracks.some((t) => t.local && t.source === 'microphone'),
-                onChange: (e: Event) =>
-                  session.voice(
-                    (e.target as HTMLSelectElement).value === 'high' ? 'high' : 'standard',
+          ...(quality
+            ? [h(MediaQuality, { model: quality, tracks: session.state.snapshot.tracks })]
+            : [
+                h('label', [
+                  'Voice preset',
+                  h(
+                    'select',
+                    {
+                      'aria-label': 'Voice preset',
+                      value: session.state.voice,
+                      disabled:
+                        session.state.busy.has('microphone') ||
+                        session.state.snapshot.tracks.some(
+                          (t) => t.local && t.source === 'microphone',
+                        ),
+                      onChange: (e: Event) =>
+                        session.voice(
+                          (e.target as HTMLSelectElement).value === 'high' ? 'high' : 'standard',
+                        ),
+                    },
+                    [
+                      h('option', { value: 'standard' }, 'Standard'),
+                      h('option', { value: 'high' }, 'High'),
+                    ],
                   ),
-              },
-              [
-                h('option', { value: 'standard' }, 'Standard'),
-                h('option', { value: 'high' }, 'High'),
-              ],
-            ),
-          ]),
-          h(
-            'small',
-            'Choose before activating the microphone. High uses less processing; echo cancellation remains on.',
-          ),
+                ]),
+                h(
+                  'small',
+                  'Choose before activating the microphone. High uses less processing; echo cancellation remains on.',
+                ),
+              ]),
           h('button', { onClick: () => void session.mute(true) }, 'Mute microphone'),
           h('button', { onClick: () => void session.mute(false) }, 'Unmute microphone'),
-          h('small', 'Camera ≤720p30 · Screen ≤1080p30. Actual delivery may be lower.'),
+
           h(
             'small',
             'Sharing media makes you visible to authorized people in this room. Friends-list privacy stays unchanged.',
@@ -499,6 +535,7 @@ export function registerRtc(
       audience = [];
       navigator.mediaDevices?.removeEventListener('devicechange', deviceChanged);
       await session.dispose();
+      await quality?.dispose();
       for (const el of elements.values()) {
         el.srcObject = null;
         el.remove();

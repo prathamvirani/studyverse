@@ -6,6 +6,7 @@ import type {
   OperationContext,
   PeopleDirectory,
   PresenceDirectory,
+  RoomOccupancy,
   RoomDirectory,
   SessionStore,
   SocialDirectory,
@@ -13,6 +14,7 @@ import type {
 } from '@study/feature-sdk';
 import {
   okSchema,
+  roomOccupancyEventSchema,
   presenceInputSchema,
   presenceSnapshotSchema,
   roomIdSchema,
@@ -51,7 +53,7 @@ export function createPresence(deps: {
   fail: Fail;
   enabled?: boolean;
   now?: () => number;
-}): { module: FeatureModule; directory: PresenceDirectory } {
+}): { module: FeatureModule; directory: PresenceDirectory; occupancy: RoomOccupancy } {
   const now = deps.now ?? Date.now,
     keys = new Map<string, Lease>();
   let lastChange = 0;
@@ -114,6 +116,8 @@ export function createPresence(deps: {
   const membershipSchema = z.strictObject({ userId: z.uuid(), roomId: z.uuid() });
   const joined = { id: 'presence.member-joined', schema: membershipSchema },
     left = { id: 'presence.member-left', schema: membershipSchema };
+  const occupancyChanged = { id: 'presence.room-occupancy', schema: roomOccupancyEventSchema };
+  let occupiedRooms = new Map<string, string[]>();
   let events: EventPublisher | undefined,
     timer: ReturnType<typeof setInterval> | undefined,
     sweeping = false;
@@ -124,6 +128,19 @@ export function createPresence(deps: {
     try {
       const leases = await valid(),
         next = new Map<string, { userId: string; roomId: string }>();
+      const currentRooms = new Map<string, string[]>();
+      for (const lease of leases)
+        if (lease.roomId) {
+          const members = currentRooms.get(lease.roomId) ?? [];
+          if (!members.includes(lease.userId)) members.push(lease.userId);
+          currentRooms.set(lease.roomId, members);
+        }
+      for (const roomId of new Set([...occupiedRooms.keys(), ...currentRooms.keys()])) {
+        const members = (currentRooms.get(roomId) ?? []).sort();
+        if (JSON.stringify(members) !== JSON.stringify(occupiedRooms.get(roomId) ?? []))
+          await events.emit(occupancyChanged, { roomId, members });
+      }
+      occupiedRooms = currentRooms;
       for (const l of leases)
         if (
           l.roomId &&
@@ -221,7 +238,7 @@ export function createPresence(deps: {
       operation: op.id,
       ...(op.kind === 'query' ? { snapshotEvent: 'presence.snapshot' } : {}),
     })),
-    events: [joined, left],
+    events: [joined, left, occupancyChanged],
     start: async (c) => {
       events = c.events;
       timer = setInterval(() => {
@@ -240,5 +257,17 @@ export function createPresence(deps: {
       keys.clear();
     },
   };
-  return { module, directory };
+  return {
+    module,
+    directory,
+    occupancy: {
+      async members(roomId) {
+        if (deps.enabled === false) return [];
+        // Count valid room leases even when a member hides their public presence.
+        return [
+          ...new Set((await valid()).filter((l) => l.roomId === roomId).map((l) => l.userId)),
+        ];
+      },
+    },
+  };
 }

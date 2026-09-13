@@ -1,5 +1,6 @@
 import type { MediaCredential, MediaSource } from '@study/contracts';
 import type { MediaSnapshot, RealtimeMediaProvider } from '@study/feature-sdk';
+export { mediaPreference } from './preferences.ts';
 export function cameraLocation(on: boolean, expanded: boolean) {
   return !on ? 'none' : expanded ? 'workspace' : 'circle';
 }
@@ -9,7 +10,7 @@ export function mediaError(error: unknown): string {
     return 'Permission denied or selection cancelled. Retry only when you are ready.';
   if (name === 'NotFoundError' || name === 'NotReadableError')
     return 'Device unavailable or in use. Check the device and retry.';
-  if (name === 'OverconstrainedError') return 'This device cannot use the basic media profile.';
+  if (name === 'OverconstrainedError') return 'This device cannot use the requested media profile.';
   return 'Media unavailable. Check your connection and room access, then retry.';
 }
 /** No capture in start/connect. Every acquisition follows a deliberate activation. */
@@ -126,7 +127,8 @@ export function createMediaSession(
           // Preserve transient user activation for the browser's display picker.
           if (state.snapshot.connection !== 'connected') await connect();
           if (!disposed && epoch === generation) {
-            if (source === 'microphone') await provider.publish(source, undefined, state.voice);
+            if (source === 'microphone')
+              await provider.publish(source, undefined, provider.quality ? undefined : state.voice);
             else await provider.publish(source);
           }
         }

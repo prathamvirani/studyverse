@@ -97,3 +97,5 @@ export function negotiateCapabilities(
 export * from './productivity.ts';
 export * from './backgrounds.ts';
 export * from './rtc.ts';
+export * from './media-quality.ts';
+export * from './room-media.ts';

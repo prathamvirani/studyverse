@@ -130,6 +130,7 @@ async function room(user: User, privacy: Room['privacy'] = 'private'): Promise<R
   return response.json();
 }
 beforeAll(async () => {
+  await migrationPool.query('DROP SCHEMA IF EXISTS room_media CASCADE');
   await migrationPool.query('DROP SCHEMA IF EXISTS backgrounds CASCADE');
   await migrationPool.query('DROP SCHEMA IF EXISTS pomodoro CASCADE');
   await migrationPool.query('DROP SCHEMA IF EXISTS tasks CASCADE');

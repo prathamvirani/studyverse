@@ -177,12 +177,13 @@ export async function createServer(dependencies: ServerDependencies) {
           );
         } catch (error) {
           if (
-            !authentication ||
+            (!authentication && mutation) ||
             !('public' in operation.access) ||
             !(error instanceof AppError) ||
             error.code !== 'UNAUTHENTICATED'
           )
             throw error;
+          // A stale cookie must not prevent public reads or starting a fresh login.
           session = null;
         }
         boundary(request, mutation);

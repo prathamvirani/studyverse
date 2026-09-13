@@ -62,18 +62,6 @@ export function createRoomComposition(displayName: string, invite: () => void) {
       label,
       load: async () => defineComponent({ setup: () => render }),
     });
-  register('room.media', 'bottomDock', 0, 'Media', () =>
-    h(
-      'button',
-      {
-        'aria-label': 'Media',
-        onClick: () => {
-          state.notice = 'Media providers are not connected yet.';
-        },
-      },
-      [h('span', { 'aria-hidden': 'true', class: 'dock-icon' }, '♫'), h('small', 'Media')],
-    ),
-  );
   register('room.more', 'bottomDock', 5, 'More', () =>
     h(
       'button',

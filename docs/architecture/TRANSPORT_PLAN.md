@@ -2,6 +2,8 @@
 
 Status: Owner-approved architectural direction, 2026-09-11. This amends interpretation of the umbrella and Phase 04; originally recorded during Phase 04. Basic RTC is now accepted under the owner’s Phase 06 amendment; see [RTC architecture](PHASE_06_RTC.md). This decision record does not authorize Phase 07.
 
+2026-09-13 update: the owner separately authorized Phase 07. The [advanced RTC implementation](PHASE_07_RTC.md) adds opt-in quality and progressive deployment tiers while preserving this transport and authority split.
+
 ## Canonical transport split
 
 | Plane               | Transport                                  | Responsibilities                                                                                                                 |
@@ -40,3 +42,5 @@ WebTransport is optional future tooling, not the planned replacement for WebRTC 
 ## Historical Phase 04 implementation boundary
 
 Implement only Personal/Shared Pomodoro, separately stored Personal/Shared tasks and shared room text chat over the existing application transport. Do not implement voice, camera, screen sharing, SFU integration, LiveKit, WebTransport media or any Phase 05+ feature. Personal timer state remains private account data and cannot be projected through room subscriptions. Shared timer state remains room data. Scope switching preserves inactive state.
+
+2026-09-13 Phase 08: shared YouTube control state, queue, suggestions and mixes use the existing authenticated HTTPS/WebSocket registries. Provider streams and the IFrame API remain direct browser-to-YouTube. Timestamp anchors change only on accepted controls/reset; client drift checks run locally every three seconds. A separate clock query avoids time-only snapshot broadcasts. See [room media](ROOM_MEDIA.md).

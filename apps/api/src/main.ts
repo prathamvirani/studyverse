@@ -1,8 +1,9 @@
+import { roomMediaModules } from './room-media.ts';
 import { backgroundsModules } from './backgrounds.ts';
 import { productivityModules } from './productivity.ts';
 import { createPool, PostgresDatabase, PostgresSessionStore, sql } from '@study/adapters/postgres';
 import { createRedis, RedisRateLimiter, RedisEphemeralStore } from '@study/adapters/redis';
-import { socialModules } from './social.ts';
+import { socialComposition } from './social.ts';
 import { socialDirectory } from '@study/friends/server';
 import { Sessions } from '@study/core/server';
 import { readConfig } from './config.ts';
@@ -23,6 +24,12 @@ redis.on('error', () => observer.record('dependency.redis.failed'));
 try {
   await db.query(sql`SELECT 1`);
   await redis.connect();
+  const social = socialComposition(
+    db,
+    new RedisEphemeralStore(redis),
+    new PostgresSessionStore(db),
+    featureEnabled(process.env, 'SOCIAL_ENABLED'),
+  );
   const { app } = await createServer({
     config,
     sessions: new Sessions(new PostgresSessionStore(db), observer),
@@ -33,12 +40,8 @@ try {
       ...productivityModules(db, process.env),
       ...backgroundsModules(db, process.env),
       ...identityModules(db, process.env, config.APP_ORIGIN, socialDirectory(db)),
-      ...socialModules(
-        db,
-        new RedisEphemeralStore(redis),
-        new PostgresSessionStore(db),
-        featureEnabled(process.env, 'SOCIAL_ENABLED'),
-      ),
+      ...social.modules,
+      ...roomMediaModules(db, social.occupancy, process.env),
     ],
     ready: async (signal) => {
       try {
@@ -47,6 +50,7 @@ try {
         await db.query(sql`SELECT 1 FROM rooms.rooms LIMIT 0`);
         await db.query(sql`SELECT 1 FROM friends.relationships LIMIT 0`);
         await db.query(sql`SELECT 1 FROM backgrounds.room_defaults LIMIT 0`);
+        await db.query(sql`SELECT 1 FROM room_media.baselines LIMIT 0`);
         await db.query(sql`SELECT 1 FROM pomodoro.timers LIMIT 0`);
         await db.query(sql`SELECT 1 FROM tasks.personal_items LIMIT 0`);
         await db.query(sql`SELECT 1 FROM tasks.shared_items LIMIT 0`);

@@ -153,7 +153,11 @@ function internalTarget(from: string, specifier: string): string | undefined {
   const base = names[match[1]!] ?? `packages/features/${match[1]}`,
     suffix = match[2];
   if (suffix === '/browser' || suffix === '/server') return `${base}/src${suffix}.ts`;
-  if (match[1] === 'adapters' && suffix?.startsWith('/livekit/')) return `${base}/src${suffix}.ts`;
+  if (
+    match[1] === 'adapters' &&
+    (suffix?.startsWith('/livekit/') || suffix?.startsWith('/youtube/'))
+  )
+    return `${base}/src${suffix}.ts`;
   if (match[1] === 'adapters') return `${base}/src${suffix}/index.ts`;
   return `${base}/src/index.ts`;
 }
@@ -247,7 +251,7 @@ export function productionSourceViolations(path: string, source: string): string
           : node.template.head.text +
             node.template.templateSpans.map((span) => ' ? ' + span.literal.text).join('');
         for (const match of sqlText.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO|TABLE)\s+([a-z_]+)\./gi)) {
-          if (match[1] !== feature)
+          if (match[1] !== feature.replaceAll('-', '_'))
             errors.push(`${path}: ${feature} queries private ${match[1]} tables`);
         }
       }
