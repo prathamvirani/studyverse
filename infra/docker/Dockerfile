@@ -1,10 +1,10 @@
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS build
+FROM node:26.9.0-bookworm-slim@sha256:c8fedd782bcd1b68d8a7d1ed2577b5f820eba820871323f605292651ff11e3c6 AS build
 WORKDIR /app
 COPY . .
 RUN npm ci --ignore-scripts
 RUN npm run build
 
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS api
+FROM node:26.9.0-bookworm-slim@sha256:c8fedd782bcd1b68d8a7d1ed2577b5f820eba820871323f605292651ff11e3c6 AS api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
@@ -22,7 +22,7 @@ USER node
 EXPOSE 3001
 CMD ["node", "dist/api/main.mjs"]
 
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS web
+FROM node:26.9.0-bookworm-slim@sha256:c8fedd782bcd1b68d8a7d1ed2577b5f820eba820871323f605292651ff11e3c6 AS web
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY --from=build --chown=node:node /app/apps/web/.output ./.output
