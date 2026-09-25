@@ -15,7 +15,7 @@
     "@study/rooms": "0.0.0",
     "@study/friends": "0.0.0",
     "@study/presence": "0.0.0",
-    "fastify": "5.12.3",
+    "fastify": "5.12.5",
     "pino": "10.3.1",
     "@study/pomodoro": "*",
     "@study/tasks": "*",
