@@ -13,6 +13,9 @@
     "npm": ">=11"
   },
   "packageManager": "npm@11.19.1",
+  "overrides": {
+    "devalue": "5.9.4"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs up",
     "dev:down": "node scripts/dev.mjs down",
@@ -44,7 +47,8 @@
     "validate:phase05": "npm run validate:phase04",
     "validate:phase06": "npm run validate:phase05",
     "validate:phase07": "npm run validate:phase06",
-    "validate:phase08": "npm run validate:phase07"
+    "validate:phase08": "npm run validate:phase07",
+    "validate:phase09": "npm run validate:phase08"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

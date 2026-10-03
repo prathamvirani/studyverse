@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { roomAddress } from '../lib/room-navigation';
 import { roomSchema } from '@study/contracts';
 const { profile, load, api } = useAccount();
 const token = ref(''),
   busy = ref(true),
   error = ref('');
-onMounted(async () => {
+onCriticalPageMounted(async () => {
   token.value = location.hash.slice(1);
   history.replaceState(null, '', '/invite');
   await load();
@@ -18,7 +19,7 @@ async function redeem() {
       token: token.value,
     });
     token.value = '';
-    await navigateTo(`/rooms/${room.id}`);
+    await navigateTo(`/rooms/${roomAddress(room)}`);
   } catch {
     error.value = 'This invite is invalid, expired, revoked or fully used.';
   } finally {
@@ -31,10 +32,9 @@ async function redeem() {
     <p class="eyebrow">A space is waiting</p>
     <h1>You’re invited.</h1>
     <p v-if="!profile">
-      Sign in, then reopen your invite link to join. Invite details stay private until you redeem
-      it.
+      Sign in to continue with this invitation. Invite details stay private until you redeem it.
     </p>
-    <SignIn v-if="!profile && !busy" /><template v-if="profile"
+    <SignIn v-if="!profile && !busy" :return-to="`/invite#${token}`" /><template v-if="profile"
       ><p>Accept this invitation to become a room member.</p>
       <button :disabled="busy || !token" @click="redeem">Accept invitation</button></template
     >

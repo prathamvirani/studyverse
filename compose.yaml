@@ -74,6 +74,7 @@ services:
       LIVEKIT_SERVICE_URL: http://livekit:7880
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      ROOM_INVITE_ENCRYPTION_KEY: ${ROOM_INVITE_ENCRYPTION_KEY:-}
       CHAT_ENABLED: ${CHAT_ENABLED:-true}
       PHASE03_ENABLED: ${PHASE03_ENABLED:-true}
       SOCIAL_ENABLED: ${SOCIAL_ENABLED:-true}
@@ -103,6 +104,7 @@ services:
   web:
     environment:
       NUXT_PUBLIC_RTC_QUALITY_STAGE: ${NUXT_PUBLIC_RTC_QUALITY_STAGE:-basic}
+      NUXT_PUBLIC_PERSONAL_MEDIA_ENABLED: ${NUXT_PUBLIC_PERSONAL_MEDIA_ENABLED:-true}
     build: { context: ., dockerfile: infra/docker/Dockerfile, target: web }
     depends_on:
       api: { condition: service_healthy }

@@ -9,16 +9,26 @@ export function socialComposition(
   store: EphemeralStore,
   sessions: SessionStore,
   enabled = true,
+  accountEvents = false,
 ) {
   const people = identityAccounts(db),
     social = socialDirectory(db),
     rooms = roomDirectory(db, social);
-  const presence = createPresence({ store, sessions, people, social, rooms, fail, enabled });
+  const presence = createPresence({
+    store,
+    sessions,
+    people,
+    social,
+    rooms,
+    fail,
+    enabled,
+    accountEvents,
+  });
   const modules = [
     friendsModule({ db, people, social, rooms, fail, enabled, presence: presence.directory }),
     presence.module,
   ];
-  return { modules, occupancy: presence.occupancy };
+  return { modules, occupancy: presence.occupancy, presence: presence.directory };
 }
 
 export function socialModules(...args: Parameters<typeof socialComposition>) {

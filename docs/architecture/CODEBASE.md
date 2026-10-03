@@ -1,6 +1,6 @@
 # Current codebase architecture
 
-Phase 07 is accepted. Phase 08 is explicitly authorized; its implementation is described in [room media architecture](ROOM_MEDIA.md). Advanced RTC remains described in [advanced RTC architecture](PHASE_07_RTC.md). Phase 09 and the later roadmap remain unauthorized.
+Accepted Phases 00–08 remain the architecture baseline. Room media is described in [room media architecture](ROOM_MEDIA.md), and advanced RTC in [advanced RTC architecture](PHASE_07_RTC.md). The owner-authorized MID-05–08 continuation is COMPLETE — AWAITING_REVIEW; its targeted UI/module extensions are recorded in the [final refresh report](../reports/MID_DESIGN_REFRESH_FINAL_REPORT.md), without claiming acceptance. Phase 09 is explicitly authorized and adds a [private local personal player](PERSONAL_STUDY_PLAYER.md); its completion gate is recorded in the [phase report](../reports/PHASE_09_PERSONAL_STUDY_PLAYER_REPORT.md). Phase 10 and later work remain unauthorized.
 
 ## Composition and dependency direction
 
@@ -11,6 +11,8 @@ The domain packages are already feature-oriented: identity, rooms, friends, pres
 The SDK barrel exports generic primitives from `foundation.ts` and domain ports from their semantic files. Domain ports import foundation types directly, avoiding barrel cycles. Contracts use semantic identity/social/productivity/backgrounds/rtc files, preserving their existing public exports and generated wire schemas.
 
 ## Web ownership
+
+The web workspace already ran Nuxt 4.5.2 before MID-08 and retains that pin and Vue 3.5.42. MID-08 adopts generated app/server/shared/node TypeScript project references and the scoped fonts/image/icon/VueUse integrations recorded in [its report](../reports/MID_08_NUXT4_AND_UX_MODULES_REPORT.md). Nuxt build configuration may import only its exact build font provider under `infra/nuxt`; browser source remains subject to Node/server dependency prohibitions. Appearance and route/room readiness retain their existing owners. No SSR disablement, new client initializer or domain rewrite is introduced.
 
 `room/composition.ts` constructs generic registries, workspace, initial self state and common controls. Concrete feature composition registers the real panels, social controls, backgrounds and media. RoomShell and WorkspaceHost consume generic interfaces and renderer contributions. The workspace guide keeps its existing persisted `demo.sandbox` type so saved device layouts survive. Other obsolete mock participants, camera registrations, example panels and placeholder background/capture branches have been removed.
 
@@ -31,3 +33,5 @@ Deployment compatibility is deliberately narrow: `PHASE01_ENABLED` and `PHASE03_
 One API process owns the application observation index and each RTC namespace. Events remain process-local; no distributed outbox, subscription system or new retention policy is added. Basic media quality remains trusted-client 720p30 camera/1080p30 screen policy, with server/provider-enforced scoped grants. Phase 07 adds opt-in, deployment-gated quality preferences through the existing provider. Existing self-hosted LiveKit replay/removal and outage bounds remain as documented in [RTC architecture](PHASE_06_RTC.md). No migration, session, privacy, room permission or media grant is changed.
 
 Room media is composed through `room-media.ts`, `@study/room-media` and a YouTube provider adapter. It consumes the presence-owned server occupancy port/event, room authorization and social/identity ports. It adds no feature dependency to RoomShell, productivity or RTC.
+
+Personal media is app-composed through `personal-media.ts`, `@study/personal-media` and registered provider adapters. Its panel uses a generic UI extension and its private tile uses the existing workspace registry. Its owner receives local storage, effective-gain and authorized activity ports; core, shared media and SDK do not import the concrete personal UI/provider implementation. Explicit public YouTube promotion reuses room media authority; all personal playback/history state remains device-local.

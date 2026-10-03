@@ -1,0 +1,224 @@
+:root {
+  --font-ui: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-control: 0.5rem;
+  --space-page: clamp(1.25rem, 2.5vw, 3.5rem);
+  --space-card: 1.5rem;
+  --space-section: 2.5rem;
+  --radius-sm: 0.625rem;
+  --radius-card: 1.125rem;
+  --radius-sheet: 1.75rem;
+  --radius-capsule: 999px;
+  --radius-circle: 50%;
+  --motion-micro: 140ms;
+  --motion-quick: 200ms;
+  --motion-standard: 320ms;
+  --motion-expressive: 480ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-soft-spring: cubic-bezier(0.22, 1.12, 0.36, 1);
+  --ease-interactive-spring: cubic-bezier(0.3, 1.2, 0.4, 1);
+  --glass-blur: 18px;
+  color-scheme: light;
+  --canvas: #f3f5f8;
+  --surface: rgb(250 251 253 / var(--surface-opacity, 100%));
+  --surface-elevated: rgb(255 255 255 / var(--surface-opacity, 100%));
+  --glass-opacity: calc(100% - var(--glass-level, 16) * 1%);
+  --glass-elevated-opacity: calc(100% - var(--glass-level, 10) * 1%);
+  --glass: rgb(250 252 255 / var(--glass-opacity));
+  --glass-elevated: rgb(255 255 255 / var(--glass-elevated-opacity));
+  --text-primary: #202733;
+  --text-secondary: #505e70;
+  --text-muted: #627086;
+  --border: #d2d9e3;
+  --border-highlight: rgb(255 255 255 / 90%);
+  --accent: #285bb8;
+  --accent-hover: #204b9c;
+  --accent-pressed: #193b7d;
+  --on-accent: #ffffff;
+  --accent-subtle: #e3ecfc;
+  --success: #23664a;
+  --success-subtle: #e3f1e9;
+  --warning: #855208;
+  --danger: #a52e45;
+  --danger-subtle: #fbe8ed;
+  --focus-ring: #3065ce;
+  --scrim: rgb(27 37 54 / 24%);
+  --shadow-surface: 0 4px 18px rgb(28 42 65 / 5%);
+  --shadow-elevated: 0 18px 60px rgb(28 42 65 / 15%);
+  --glass-highlight: inset 0 1px 0 var(--border-highlight);
+}
+
+/* System is resolved by CSS, including before hydration and on live OS changes. */
+
+[data-appearance='dark'],
+.room-shell {
+  color-scheme: dark;
+  --canvas: #11151d;
+  --surface: rgb(27 34 45 / var(--surface-opacity, 100%));
+  --surface-elevated: rgb(37 46 60 / var(--surface-opacity, 100%));
+  --glass-opacity: calc(100% - var(--glass-level, 18) * 1%);
+  --glass-elevated-opacity: calc(100% - var(--glass-level, 10) * 1%);
+  --glass: rgb(29 37 50 / var(--glass-opacity));
+  --glass-elevated: rgb(37 47 63 / var(--glass-elevated-opacity));
+  --text-primary: #edf1f8;
+  --text-secondary: #bec9da;
+  --text-muted: #a3b0c5;
+  --border: #46536a;
+  --border-highlight: rgb(217 231 255 / 15%);
+  --accent: #9bbdff;
+  --accent-hover: #b8d0ff;
+  --accent-pressed: #83aaf4;
+  --on-accent: #152746;
+  --accent-subtle: #283c5c;
+  --success: #95d9b3;
+  --success-subtle: #223f35;
+  --warning: #f0cb84;
+  --danger: #ffacb9;
+  --danger-subtle: #4b2934;
+  --focus-ring: #adcbff;
+  --scrim: rgb(0 0 0 / 45%);
+  --shadow-surface: 0 4px 18px rgb(0 0 0 / 12%);
+  --shadow-elevated: 0 18px 60px rgb(0 0 0 / 32%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-appearance='light']):not([data-appearance='dark'])) {
+    color-scheme: dark;
+    --canvas: #11151d;
+    --surface: rgb(27 34 45 / var(--surface-opacity, 100%));
+    --surface-elevated: rgb(37 46 60 / var(--surface-opacity, 100%));
+    --glass-opacity: calc(100% - var(--glass-level, 18) * 1%);
+    --glass-elevated-opacity: calc(100% - var(--glass-level, 10) * 1%);
+    --glass: rgb(29 37 50 / var(--glass-opacity));
+    --glass-elevated: rgb(37 47 63 / var(--glass-elevated-opacity));
+    --text-primary: #edf1f8;
+    --text-secondary: #bec9da;
+    --text-muted: #a3b0c5;
+    --border: #46536a;
+    --border-highlight: rgb(217 231 255 / 15%);
+    --accent: #9bbdff;
+    --accent-hover: #b8d0ff;
+    --accent-pressed: #83aaf4;
+    --on-accent: #152746;
+    --accent-subtle: #283c5c;
+    --success: #95d9b3;
+    --success-subtle: #223f35;
+    --warning: #f0cb84;
+    --danger: #ffacb9;
+    --danger-subtle: #4b2934;
+    --focus-ring: #adcbff;
+    --scrim: rgb(0 0 0 / 45%);
+    --shadow-surface: 0 4px 18px rgb(0 0 0 / 12%);
+    --shadow-elevated: 0 18px 60px rgb(0 0 0 / 32%);
+  }
+}
+
+/* Manual tuning includes fallback/nested material fills, not only explicit glass classes. */
+:root[data-glass-transparency]:not([data-glass-transparency='auto']) {
+  --surface-opacity: calc(100% - var(--glass-level, 0) * 1%);
+  --manual-fill: calc(100% - var(--glass-level, 0) * 1%);
+}
+/* Full tuning alpha, resolved from SSR attributes before paint. Auto uses theme-safe defaults. */
+:root[data-glass-transparency='0'] {
+  --glass-level: 0;
+}
+:root[data-glass-transparency='5'] {
+  --glass-level: 5;
+}
+:root[data-glass-transparency='10'] {
+  --glass-level: 10;
+}
+:root[data-glass-transparency='15'] {
+  --glass-level: 15;
+}
+:root[data-glass-transparency='20'] {
+  --glass-level: 20;
+}
+:root[data-glass-transparency='25'] {
+  --glass-level: 25;
+}
+:root[data-glass-transparency='30'] {
+  --glass-level: 30;
+}
+:root[data-glass-transparency='35'] {
+  --glass-level: 35;
+}
+:root[data-glass-transparency='40'] {
+  --glass-level: 40;
+}
+:root[data-glass-transparency='45'] {
+  --glass-level: 45;
+}
+:root[data-glass-transparency='50'] {
+  --glass-level: 50;
+}
+:root[data-glass-transparency='55'] {
+  --glass-level: 55;
+}
+:root[data-glass-transparency='60'] {
+  --glass-level: 60;
+}
+:root[data-glass-transparency='65'] {
+  --glass-level: 65;
+}
+:root[data-glass-transparency='70'] {
+  --glass-level: 70;
+}
+:root[data-glass-transparency='75'] {
+  --glass-level: 75;
+}
+:root[data-glass-transparency='80'] {
+  --glass-level: 80;
+}
+:root[data-glass-transparency='85'] {
+  --glass-level: 85;
+}
+:root[data-glass-transparency='90'] {
+  --glass-level: 90;
+}
+:root[data-glass-transparency='95'] {
+  --glass-level: 95;
+}
+:root[data-glass-transparency='100'] {
+  --glass-level: 100;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-appearance],
+  :root[data-glass-transparency]:not([data-glass-transparency='auto']),
+  .room-shell {
+    --surface-opacity: 100%;
+    --manual-fill: 100%;
+    --glass: var(--surface);
+    --glass-elevated: var(--surface-elevated);
+    --glass-blur: 0px;
+  }
+}
+@media (prefers-contrast: more) {
+  :root[data-appearance],
+  :root[data-glass-transparency]:not([data-glass-transparency='auto']),
+  .room-shell {
+    --border: var(--text-secondary);
+    --surface-opacity: 100%;
+    --manual-fill: 100%;
+    --glass: var(--surface);
+    --glass-elevated: var(--surface-elevated);
+    --glass-blur: 0px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-micro: 0ms;
+    --motion-quick: 0ms;
+    --motion-standard: 0ms;
+    --motion-expressive: 0ms;
+  }
+}

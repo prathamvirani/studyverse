@@ -1,0 +1,216 @@
+{
+  "phase": "MID-04A",
+  "status": "COMPLETE — AWAITING_REVIEW",
+  "ownerAcceptance": false,
+  "mid05Started": false,
+  "date": "2026-10-02",
+  "unit": {
+    "files": 36,
+    "passed": 224
+  },
+  "focusedIdentityRoomsServices": {
+    "passed": 28
+  },
+  "browser": {
+    "distinctScenariosWithPassingEvidence": 73,
+    "completeRun": {
+      "total": 73,
+      "passed": 68,
+      "failed": 5,
+      "log": "browser-regression.log"
+    },
+    "focusedCorrectionRun": {
+      "total": 17,
+      "passed": 13,
+      "failed": 4,
+      "log": "focused-final-corrections.log"
+    },
+    "finalAffectedSelection": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "log": "focused-camera-and-context.log"
+    },
+    "remainingFailedScenarios": [],
+    "fullRuns": 1
+  },
+  "checks": {
+    "ownedFormatting": "passed",
+    "lintAndBoundaries": "passed",
+    "typecheck": "passed",
+    "contracts": "passed",
+    "sourceSecurity": "passed",
+    "secrets": "passed",
+    "productionBuild": "passed",
+    "gitDiffWhitespace": "passed"
+  },
+  "integrity": {
+    "baselineFiles": 657,
+    "protectedBaselineFiles": 625,
+    "allProtectedBaselineHashesMatch": true,
+    "unexpectedChanges": [],
+    "changedBaselineFiles": [
+      "apps/web/app/components/FriendContext.vue",
+      "apps/web/app/components/RoomAddressEditor.vue",
+      "apps/web/app/components/RoomCard.vue",
+      "apps/web/app/components/RoomEntryConfirmation.vue",
+      "apps/web/app/components/RoomPage.vue",
+      "apps/web/app/composables/useRoomEntry.ts",
+      "apps/web/app/lib/workspace-popouts.ts",
+      "docs/reports/MID_04A_OWNER_REVIEW_CORRECTIONS_AND_ROOM_STABILITY_REPORT.md",
+      "packages/ui/src/styles/primitives.css",
+      "tests/browser/layout-entry-followup.spec.ts",
+      "tests/browser/owner-corrections.spec.ts",
+      "tests/browser/room-browse.spec.ts",
+      "tests/browser/room-refresh.spec.ts",
+      "tests/browser/room-stability.spec.ts",
+      "apps/web/app/app.vue",
+      "apps/web/app/components/productivity/ChatPanel.vue",
+      "apps/web/app/components/room/RoomShell.vue",
+      "apps/web/app/components/room/WorkspaceHost.vue",
+      "apps/web/app/pages/friends.vue",
+      "apps/web/app/room/composition.ts",
+      "apps/web/app/room/productivity.ts",
+      "apps/web/app/room/rtc.ts",
+      "packages/contracts/generated/openapi-v1.json",
+      "packages/contracts/generated/protocol-v1.schema.json",
+      "packages/core/src/workspace.ts",
+      "packages/features/rooms/src/server.ts",
+      "packages/ui/src/index.ts",
+      "scripts/application-migrations.ts",
+      "tests/browser/productivity.spec.ts",
+      "tests/browser/room-workspace.spec.ts",
+      "tests/services/identity-rooms.test.ts",
+      "tests/unit/room-workspace.test.ts"
+    ],
+    "historicalReferencesRestored": 87,
+    "historicalReferenceFiles": 248,
+    "previousReportContentPreserved": true,
+    "newArchiveMigration": "packages/features/rooms/migrations/0005_invite_archive.sql"
+  },
+  "development": {
+    "inventory": {
+      "tables": 22,
+      "allOriginalRecordCountsPreserved": true,
+      "originalColumnProjectionsPreserved": true,
+      "unchangedTableDigests": 20,
+      "changedTableDigests": ["core.sessions", "rooms.memberships"],
+      "originalMigrationLedgerPreserved": true,
+      "limitation": "Only whole-row digests were recorded before the pass; exact changed values in active session and membership tables cannot be reconstructed from that snapshot."
+    },
+    "migration": {
+      "addedLedgerRows": 1,
+      "checksumMatches": true,
+      "existingInvitesRemainUnarchived": true
+    },
+    "https": {
+      "webStatus": 200,
+      "readyStatus": 200,
+      "readyBody": {
+        "status": "ok"
+      },
+      "providersStatus": 200
+    }
+  },
+  "screenshots": [
+    {
+      "file": "address-invites-desktop.png",
+      "width": 1440,
+      "height": 1039,
+      "sha256": "d4ca56f23bb4d9ac0a3b92fcc0babfdd2e59f5efa6fed0484b5ccbb217ba480d",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "address-invites-narrow.png",
+      "width": 390,
+      "height": 1370,
+      "sha256": "f97e2875874595551ff22c66daf10edba34346791ff17ecc93a3ac2ed03a4e9a",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "chat-companion-wide.png",
+      "width": 720,
+      "height": 300,
+      "sha256": "ac4272a14eaceeb31316851e07478249dea91fefb902967e49222c46bf08a96f",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "chat-minimum-touch.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "79591db5e4608d4733df6aa47c784c88ee19058943b57ef25f10b1904cfcbacc",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "dock-companion-wide.png",
+      "width": 720,
+      "height": 300,
+      "sha256": "f6d371146d5fa90dd26c06e30ad65288c4d2d35ebbc3b2c04910dcad2f5441d1",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "global-context-menu.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "f8fbb0dcfbe3c02eda6b2793127c74571e16ce5def1d98b74c971a3cf775e24f",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "inline-rearrange.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "e875e75d5ba6d5c4b3294d2567dd6312470d971c0b17587e6b5d11e1f9cbc2f9",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "participants-companion-wide.png",
+      "width": 720,
+      "height": 300,
+      "sha256": "d15dcdaa9503676d3f330a77c24482bb6caea266281d800ab2b4d624489da177",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "room-first-doorway.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "eedb88c2e8dddae1b618cda1b9a0613ee99a8c8ec1c8e3e46aa78436c9022b99",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "same-shell-admitted.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "52e9e2d452e2911ed70224bafd60059a5e0d619ec1bf76aabf8041465a4fdbf7",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "same-subscription-remote-video.png",
+      "width": 420,
+      "height": 520,
+      "sha256": "c128e82f4a1081e860335ec18e49c2777f710f87d25a2390e925dd8f9d4cd6f1",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "same-track-camera-companion.png",
+      "width": 420,
+      "height": 520,
+      "sha256": "c411a60f28ebfb47aabe8ee2a73bc106508d78e96178fc8fc975ec7ec0c791f9",
+      "visualReview": "inspected"
+    },
+    {
+      "file": "shell-direct-no-back.png",
+      "width": 1440,
+      "height": 700,
+      "sha256": "0f9445b9e39a288851d11fad976942f4645e8529ec58d43268c74fc31ae37f2b",
+      "visualReview": "inspected"
+    }
+  ],
+  "limitations": [
+    "Chromium and local synthetic media; not physical hardware or every browser/OS picker.",
+    "YouTube fixture verifies ownership and controller behavior, not real playback.",
+    "Browser controls popup permission, window sizing, native dialogs and clipboard availability.",
+    "Bulk images use bounded direct Chromium surface capture after standard page capture stalled.",
+    "Complete browser run had failures; separate focused corrections supply their passing evidence.",
+    "Two development table digests differ; original counts and ledger are preserved, exact previous values unavailable."
+  ]
+}

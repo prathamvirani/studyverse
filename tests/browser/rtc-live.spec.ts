@@ -1,3 +1,5 @@
+import { hideWorkspaceCards, roomSettings } from './room-settings.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { syntheticMedia } from './synthetic-media.ts';
@@ -48,7 +50,8 @@ async function login(page: Page, provider: string) {
   });
   await page.goto('/');
   await page.getByRole('button', { name: `Continue with ${provider}` }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
 }
 test('real LiveKit forwards two authenticated publishers, moves camera renderer, shares screen and revokes access', async ({
   browser,
@@ -88,8 +91,8 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
       name: 'Basic RTC · local LiveKit',
       privacy: 'public',
     });
-    await alice.goto(`/rooms/${room.id}`);
-    await bob.goto(`/rooms/${room.id}`);
+    await alice.goto(`/rooms/${room.publicId}/configure`);
+    await bob.goto(`/rooms/${room.publicId}/configure`);
     await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
     await bob.getByRole('button', { name: 'Join room', exact: true }).click();
     await expect(alice.locator('video,audio')).toHaveCount(0);
@@ -109,7 +112,7 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
       (window as unknown as { originalCamera: Element }).originalCamera = v;
     });
     await bob.screenshot({ path: '.local/validation/phase06-live-circle.png' });
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
+    await roomSettings(alice);
     await expect(alice.getByText('Media: connected', { exact: true })).toBeVisible();
     expect(dropSignal).toBeDefined();
     await alice.evaluate(() => {
@@ -151,7 +154,11 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
       ),
     ).toBe(true);
     await bob.screenshot({ path: '.local/validation/phase06-live-expanded.png' });
-    await bob.getByRole('button', { name: 'Close tile', exact: true }).click();
+    await bob
+      .locator('.workspace-tile')
+      .filter({ has: bob.locator('video') })
+      .getByRole('button', { name: 'Close tile', exact: true })
+      .click();
     await expect(bob.locator(`#participant-${userA.id} video`)).toHaveCount(1);
     await bob.getByRole('button', { name: 'Camera off', exact: true }).click();
     await expect(alice.locator(`[data-camera-renderer="${userB.id}"]`)).toHaveCount(1, {
@@ -159,6 +166,16 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
     });
     await alice.getByRole('button', { name: 'Microphone off', exact: true }).click();
     await expect(bob.locator('audio')).toHaveCount(1, { timeout: 15000 });
+    await expect(alice.getByRole('button', { name: 'Microphone on', exact: true })).toHaveAttribute(
+      'data-state',
+      'speaking',
+      { timeout: 15000 },
+    );
+    await expect(bob.locator(`#participant-${userA.id}`)).toHaveAttribute(
+      'aria-label',
+      /speaking/,
+      { timeout: 15000 },
+    );
     await expect
       .poll(() =>
         bob.evaluate(async () => {
@@ -173,13 +190,22 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
         }),
       )
       .toBeGreaterThan(0);
-    await expect(bob.locator(`#participant-${userA.id}`).locator('..')).toContainText('Mic on');
+    await expect(bob.locator(`#participant-${userA.id}`)).toHaveAttribute(
+      'aria-label',
+      /microphone on|speaking/,
+    );
     await alice.screenshot({ path: '.local/validation/phase06-live-mic.png' });
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
+    await roomSettings(alice);
     await alice.getByRole('button', { name: 'Mute microphone', exact: true }).click();
-    await expect(bob.locator(`#participant-${userA.id}`).locator('..')).toContainText('Mic off');
+    await expect(bob.locator(`#participant-${userA.id}`)).toHaveAttribute(
+      'aria-label',
+      /microphone muted/,
+    );
     await alice.getByRole('button', { name: 'Unmute microphone', exact: true }).click();
-    await expect(bob.locator(`#participant-${userA.id}`).locator('..')).toContainText('Mic on');
+    await expect(bob.locator(`#participant-${userA.id}`)).toHaveAttribute(
+      'aria-label',
+      /microphone on|speaking/,
+    );
     await alice.keyboard.press('Escape');
     await alice.getByRole('button', { name: 'Screen Share off', exact: true }).click();
     await expect(bob.locator('.workspace-tile video[aria-label="Screen share"]')).toHaveCount(1, {
@@ -196,16 +222,16 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
       ['mobile', 390, 844],
     ] as const) {
       await bob.setViewportSize({ width, height });
-      if (width < 760) await bob.getByRole('button', { name: 'Hide panels' }).click();
+      if (width < 760) await hideWorkspaceCards(bob);
       await bob.screenshot({ path: `.local/validation/phase06-live-screen-${name}.png` });
     }
     await alice.getByRole('button', { name: 'Screen Share on', exact: true }).click();
     await expect(bob.locator('.workspace-tile video')).toHaveCount(0);
     await alice.getByRole('button', { name: 'Microphone on', exact: true }).click();
     await expect(bob.locator('audio')).toHaveCount(0);
-    // Full reload requires deliberate room entry and never restores local capture.
+    // Full reload restores room admission and never restores local capture.
     await alice.reload();
-    await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
+    await expect(alice.locator('.room-dock')).toBeVisible();
     await expect(alice.getByRole('button', { name: 'Camera off', exact: true })).toBeVisible();
     await alice.getByRole('button', { name: 'Camera off', exact: true }).click();
     await expect(remote).toHaveCount(1, { timeout: 15000 });
@@ -218,7 +244,7 @@ test('real LiveKit forwards two authenticated publishers, moves camera renderer,
     });
     await expect(api(bob, 'rtc/join', { roomId: room.id })).rejects.toThrow('HTTP 403');
     await bob.reload();
-    await bob.getByRole('button', { name: 'Join room', exact: true }).click();
+    await expect(bob.locator('.room-dock')).toBeVisible();
     await expect(remote).toHaveCount(1, { timeout: 15000 });
     // Normal account logout revokes the active application session; the server removes SFU identity.
     await api(alice, 'account/logout', {});
@@ -269,10 +295,15 @@ test('two tabs for the same account own distinct live camera publications and in
     const second = await a.newPage();
     await syntheticMedia(second);
     for (const page of [first, second, viewer]) {
-      await page.goto(`/rooms/${room.id}`);
+      const admission = page.waitForResponse(
+        (response) => response.url().endsWith('/api/v1/rtc/join') && response.ok(),
+      );
+      await page.goto(`/rooms/${room.publicId}/configure`);
       await page
         .getByRole('button', { name: page === viewer ? 'Join room' : 'Enter room', exact: true })
         .click();
+      await admission;
+      await expect(page.getByRole('navigation', { name: 'Room controls' })).toBeVisible();
     }
     await first.getByRole('button', { name: 'Camera off', exact: true }).click();
     await second.getByRole('button', { name: 'Camera off', exact: true }).click();
@@ -321,8 +352,8 @@ test('real SFU removes blocked room media and rejects readmission', async ({ bro
     const userA = await api(alice, 'account/me'),
       userB = await api(bob, 'account/me');
     const room = await api(alice, 'rooms/create', { name: 'RTC block policy', privacy: 'public' });
-    await alice.goto(`/rooms/${room.id}`);
-    await bob.goto(`/rooms/${room.id}`);
+    await alice.goto(`/rooms/${room.publicId}/configure`);
+    await bob.goto(`/rooms/${room.publicId}/configure`);
     await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
     await bob.getByRole('button', { name: 'Join room', exact: true }).click();
     await bob.getByRole('button', { name: 'Camera off', exact: true }).click();

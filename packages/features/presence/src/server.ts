@@ -14,6 +14,7 @@ import type {
 } from '@study/feature-sdk';
 import {
   okSchema,
+  accountDeletedSchema,
   roomOccupancyEventSchema,
   presenceInputSchema,
   presenceSnapshotSchema,
@@ -52,6 +53,7 @@ export function createPresence(deps: {
   social: SocialDirectory;
   fail: Fail;
   enabled?: boolean;
+  accountEvents?: boolean;
   now?: () => number;
 }): { module: FeatureModule; directory: PresenceDirectory; occupancy: RoomOccupancy } {
   const now = deps.now ?? Date.now,
@@ -82,6 +84,28 @@ export function createPresence(deps: {
     return result;
   };
   const directory: PresenceDirectory = {
+    async roomSummaries(viewer) {
+      if (deps.enabled === false) return {};
+      const result: Record<
+        string,
+        { onlineCount: number; friendsHere: number; friendsStudying: number }
+      > = {};
+      for (const target of new Set((await valid()).map((lease) => lease.userId))) {
+        const view = await directory.view(viewer, target);
+        if (!view?.room || !view.status || view.status === 'offline') continue;
+        const summary = (result[view.room.id] ??= {
+          onlineCount: 0,
+          friendsHere: 0,
+          friendsStudying: 0,
+        });
+        summary.onlineCount++;
+        if (viewer !== target && (await deps.social.friends(viewer, target))) {
+          summary.friendsHere++;
+          if (view.status === 'focusing') summary.friendsStudying++;
+        }
+      }
+      return result;
+    },
     async view(viewer, target) {
       const person = await deps.people.person(target);
       if (!person || (await deps.social.blocked(viewer, target))) return null;
@@ -207,10 +231,13 @@ export function createPresence(deps: {
         ];
         const participants = [];
         for (const id of ids) {
-          if (id !== a.subjectId && !(await deps.social.privacy(id)).room) continue;
-          const view = await directory.view(a.subjectId, id);
-          if (view && view.status !== null && view.status !== 'offline')
-            participants.push({ ...view, room: null });
+          if (id !== a.subjectId && (await deps.social.blocked(a.subjectId, id))) continue;
+          const person = await deps.people.person(id);
+          if (!person) continue;
+          // The authorized room-local lease controls participation, independently of external disclosure.
+          // Status still uses the privacy-filtered projection; current room never leaves this surface.
+          const external = await directory.view(a.subjectId, id);
+          participants.push({ ...person, status: external?.status ?? null, room: null });
         }
         return { participants: participants.slice(0, 200) };
       },
@@ -239,6 +266,23 @@ export function createPresence(deps: {
       ...(op.kind === 'query' ? { snapshotEvent: 'presence.snapshot' } : {}),
     })),
     events: [joined, left, occupancyChanged],
+    dependencies: deps.accountEvents ? [{ id: 'identity', major: 1 }] : [],
+    subscriptions: deps.accountEvents
+      ? [
+          {
+            event: 'identity.deleted',
+            handle: async (payload) => {
+              const { userId } = accountDeletedSchema.parse(payload);
+              for (const [key, l] of keys)
+                if (l.userId === userId) {
+                  keys.delete(key);
+                  await deps.store.delete('presence', key);
+                }
+              await sweep();
+            },
+          },
+        ]
+      : [],
     start: async (c) => {
       events = c.events;
       timer = setInterval(() => {

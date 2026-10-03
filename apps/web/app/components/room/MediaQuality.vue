@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { StudySelect } from '@study/ui';
 import { ref, watch, nextTick } from 'vue';
 import { mediaQualitySchema, qualityPreset, voiceProfile } from '@study/contracts';
 import type { QualityModel } from '../../room/rtc-quality';
 import type { MediaTrack, MediaProfile } from '@study/feature-sdk';
-const props = defineProps<{ model: QualityModel; tracks: readonly MediaTrack[] }>();
+const props = withDefaults(
+  defineProps<{ model: QualityModel; tracks: readonly MediaTrack[]; section?: string }>(),
+  { section: 'Quality' },
+);
 const draft = ref(mediaQualitySchema.parse(props.model.state.current));
 const name = ref('');
 watch(
@@ -30,8 +34,7 @@ const resolutions = [
   [3440, 1440],
   [3840, 2160],
 ];
-function resolution(source: (typeof sources)[number], event: Event) {
-  const value = (event.target as HTMLSelectElement).value;
+function resolution(source: (typeof sources)[number], value: string) {
   draft.value[source].resolution = value === 'native' ? 'native' : 'fixed';
   if (value !== 'native' && value !== 'custom') {
     const [w, h] = value.split('x').map(Number);
@@ -50,230 +53,268 @@ function format(p?: MediaProfile) {
   return `${p?.resolution === 'native' ? 'Native (tier bounded)' : `${p?.width ?? '?'} × ${p?.height ?? '?'}`} · ${p?.fps ?? '?'} FPS · ${p?.codec ?? 'unknown codec'} · ${p?.bitrate === undefined ? 'unknown bitrate' : (p.bitrate / 1e6).toFixed(2) + ' Mbps'}`;
 }
 const fps = [24, 30, 50, 60, 75, 90, 100, 120, 144, 165, 200, 240, 250];
-async function applyFrom(event: Event, value = draft.value) {
-  const control = event.currentTarget as HTMLElement;
+async function applyFrom(event?: Event, value = draft.value) {
+  const control = event?.currentTarget as HTMLElement | undefined;
   await props.model.apply(value);
   await nextTick();
-  if (control.isConnected && document.activeElement === document.body) control.focus();
+  if (control?.isConnected && document.activeElement === document.body) control.focus();
 }
 </script>
 
 <template>
   <section class="media-quality" aria-label="Media quality">
-    <h3>Media quality</h3>
-    <p>
+    <p v-if="section !== 'Diagnostics'">
       Automatic, conservative quality by default. Capture always starts with your mic, camera or
       share button.
     </p>
-    <fieldset :disabled="!model.state.ready || model.state.busy">
+    <fieldset v-if="section !== 'Diagnostics'" :disabled="!model.state.ready || model.state.busy">
       <legend>Personal preferences</legend>
-      <label
-        >Quality mode
-        <select v-model="draft.mode" aria-label="Quality mode">
-          <option value="basic">Basic</option>
-          <option value="advanced">Advanced</option>
-        </select></label
-      >
-      <div class="quality-actions">
-        <button
-          v-for="preset in ['data-saver', 'balanced', 'high'] as const"
-          :key="preset"
-          type="button"
-          @click="draft = qualityPreset(preset)"
-        >
-          {{ preset === 'data-saver' ? 'Data Saver' : preset === 'balanced' ? 'Balanced' : 'High' }}
-        </button>
-      </div>
-      <p>
-        Deployment tier: {{ model.capabilities?.stage ?? 'basic' }}. Higher requests are reduced to
-        this tier. High requests 1080p60; it needs tier A or later.
-      </p>
-      <template v-if="draft.mode === 'advanced'">
-        <p>
-          Maximum / Custom is experimental. Source, encoder, network, receiver and negotiation can
-          reduce quality. Native means no preferred size, within deployment limits; native refresh
-          is unknown.
-        </p>
-        <details v-for="source in sources" :key="source" :open="source === 'camera'">
-          <summary>{{ labels[source] }}</summary>
-          <label
-            >Resolution preset
-            <select
-              :aria-label="`${labels[source]} resolution preset`"
-              :value="resolutionChoice(source)"
-              @change="resolution(source, $event)"
-            >
-              <option value="custom">Custom dimensions</option>
-              <option v-for="r in resolutions" :key="r.join('x')" :value="r.join('x')">
-                {{ r.join(' × ') }}
-              </option>
-              <option value="native">Native (within tier)</option>
-            </select></label
-          >
-          <div class="quality-grid">
-            <label
-              >Requested width
-              <input
-                v-model.number="draft[source].width"
-                :aria-label="`${labels[source]} width`"
-                type="number"
-                min="160"
-                max="7680"
-                :disabled="draft[source].resolution === 'native'"
-            /></label>
-            <label
-              >Requested height
-              <input
-                v-model.number="draft[source].height"
-                :aria-label="`${labels[source]} height`"
-                type="number"
-                min="90"
-                max="4320"
-                :disabled="draft[source].resolution === 'native'"
-            /></label>
-          </div>
-          <label
-            >FPS preset
-            <select v-model="draft[source].fps" :aria-label="`${labels[source]} FPS preset`">
-              <option :value="null">Native / Auto</option>
-              <option
-                v-if="draft[source].fps !== null && !fps.includes(draft[source].fps)"
-                :value="draft[source].fps"
-              >
-                Custom
-              </option>
-              <option v-for="f in fps" :key="f" :value="f">{{ f }}</option>
-            </select></label
-          >
-          <label
-            >Custom FPS (1–250)
-            <input
-              v-model.number="draft[source].fps"
-              :aria-label="`${labels[source]} FPS`"
-              type="number"
-              min="1"
-              max="250"
-              step="0.1"
-          /></label>
-          <template v-if="source === 'camera' || source === 'screen'">
-            <label
-              >Bitrate ceiling (bits/s)
-              <input
-                v-model.number="draft[source].bitrate"
-                :aria-label="`${labels[source]} bitrate`"
-                type="number"
-                min="100000"
-                max="50000000"
-                step="100000"
-            /></label>
-            <label
-              >Codec preference
-              <select v-model="draft[source].codec" :aria-label="`${labels[source]} codec`">
-                <option value="auto">Auto</option>
-                <option
-                  v-for="codec in ['av1', 'vp9', 'h264', 'vp8']"
-                  :key="codec"
-                  :value="codec"
-                  :disabled="!model.capabilities?.codecs.includes(codec)"
-                >
-                  {{ codec.toUpperCase()
-                  }}{{
-                    model.capabilities?.codecs.includes(codec)
-                      ? ' · advertised'
-                      : ' · unavailable / unknown'
-                  }}
-                </option>
-              </select></label
-            >
-            <label
-              >Quality / latency priority
-              <select v-model="draft[source].priority">
-                <option value="balanced">Balanced</option>
-                <option value="quality">Quality · preserve resolution</option>
-                <option value="latency">Latency / motion · preserve FPS</option>
-              </select></label
-            >
-            <label
-              >Layers
-              <select v-model="draft[source].layers">
-                <option value="auto">Auto</option>
-                <option value="off">Single spatial layer</option>
-                <option value="simulcast">Simulcast (VP8 / H264)</option>
-                <option value="svc">SVC (VP9 / AV1)</option>
-              </select></label
-            >
-            <label
-              >Content type
-              <select v-model="draft[source].content">
-                <option value="motion">Motion</option>
-                <option value="detail">Detail / presentation</option>
-                <option value="text">Text</option>
-              </select></label
-            >
-            <label
-              ><input v-model="draft[source].preserveAspectRatio" type="checkbox" /> Preserve source
-              aspect ratio</label
-            >
-          </template>
-          <p v-else>
-            Receive is a useful render-size ceiling, not a guarantee of an exact SFU layer. Receive
-            bitrate and codec are negotiated by the sender/provider.
-          </p>
-        </details>
-        <p>
-          Layer mode follows the negotiated codec. Latency is an encoder tradeoff, not a latency
-          guarantee. Hardware encoder selection is unavailable.
-        </p>
-      </template>
-      <label
-        >Voice preset
-        <select
-          v-model="draft.audio.mode"
-          aria-label="Voice preset"
-          @change="draft.audio = voiceProfile(draft.audio.mode)"
-        >
-          <option value="standard">Standard</option>
-          <option value="high">High</option>
-          <option value="studio">Studio Voice</option>
-        </select></label
-      >
-      <p v-if="draft.audio.mode === 'studio'">
-        Studio Voice requests 48 kHz Opus with processing off. Use headphones to avoid echo. Browser
-        support varies; this is not lossless audio.
-      </p>
-      <template v-if="draft.mode === 'advanced' || draft.audio.mode === 'studio'">
+      <template v-if="section === 'Quality' || section === 'Camera'">
         <label
-          v-for="processing in ['echoCancellation', 'noiseSuppression', 'autoGainControl'] as const"
-          :key="processing"
-          ><input
-            v-model="draft.audio[processing]"
-            type="checkbox"
-            :disabled="!model.capabilities?.processing.includes(processing)"
-          />
-          {{ processing }}
-          {{
-            model.capabilities?.processing.includes(processing) ? '' : '(unsupported / unknown)'
-          }}</label
-        >
-        <label
-          >Opus ceiling (bits/s)
-          <input
-            v-model.number="draft.audio.bitrate"
-            aria-label="Opus bitrate"
-            type="number"
-            min="16000"
-            max="256000"
+          >Quality mode
+          <StudySelect
+            v-model="draft.mode"
+            label="Quality mode"
+            :options="[
+              { value: 'basic', label: 'Basic' },
+              { value: 'advanced', label: 'Advanced' },
+            ]"
+            @update:model-value="applyFrom()"
         /></label>
+        <div class="quality-actions">
+          <button
+            v-for="preset in ['data-saver', 'balanced', 'high'] as const"
+            :key="preset"
+            type="button"
+            @click="
+              draft = qualityPreset(preset);
+              applyFrom($event);
+            "
+          >
+            {{
+              preset === 'data-saver' ? 'Data Saver' : preset === 'balanced' ? 'Balanced' : 'High'
+            }}
+          </button>
+        </div>
+        <p>
+          Quality adapts to this device and the room's supported limits. Advanced changes apply
+          together to avoid repeatedly restarting a live stream.
+        </p>
+        <template v-if="draft.mode === 'advanced'">
+          <p>
+            Maximum / Custom is experimental. Source, encoder, network, receiver and negotiation can
+            reduce quality. Native means no preferred size, within deployment limits; native refresh
+            is unknown.
+          </p>
+          <details
+            v-for="source in sources.filter(
+              (s) => section !== 'Camera' || s === 'camera' || s === 'cameraReceive',
+            )"
+            :key="source"
+            :open="source === 'camera'"
+          >
+            <summary>{{ labels[source] }}</summary>
+            <label
+              >Resolution preset
+              <StudySelect
+                :label="`${labels[source]} resolution preset`"
+                :model-value="resolutionChoice(source)"
+                :options="[
+                  { value: 'custom', label: 'Custom dimensions' },
+                  ...resolutions.map((r) => ({ value: r.join('x'), label: r.join(' × ') })),
+                  { value: 'native', label: 'Native (within tier)' },
+                ]"
+                @update:model-value="resolution(source, $event)"
+            /></label>
+            <div class="quality-grid">
+              <label
+                >Requested width
+                <input
+                  v-model.number="draft[source].width"
+                  :aria-label="`${labels[source]} width`"
+                  type="number"
+                  min="160"
+                  max="7680"
+                  :disabled="draft[source].resolution === 'native'"
+              /></label>
+              <label
+                >Requested height
+                <input
+                  v-model.number="draft[source].height"
+                  :aria-label="`${labels[source]} height`"
+                  type="number"
+                  min="90"
+                  max="4320"
+                  :disabled="draft[source].resolution === 'native'"
+              /></label>
+            </div>
+            <label
+              >FPS preset
+              <StudySelect
+                :label="`${labels[source]} FPS preset`"
+                :model-value="draft[source].fps === null ? 'native' : String(draft[source].fps)"
+                :options="[
+                  { value: 'native', label: 'Native / Auto' },
+                  ...(draft[source].fps !== null && !fps.includes(draft[source].fps)
+                    ? [{ value: String(draft[source].fps), label: 'Custom' }]
+                    : []),
+                  ...fps.map((f) => ({ value: String(f), label: String(f) })),
+                ]"
+                @update:model-value="
+                  draft[source].fps = $event === 'native' ? null : Number($event)
+                "
+            /></label>
+            <label
+              >Custom FPS (1–250)
+              <input
+                v-model.number="draft[source].fps"
+                :aria-label="`${labels[source]} FPS`"
+                type="number"
+                min="1"
+                max="250"
+                step="0.1"
+            /></label>
+            <template v-if="source === 'camera' || source === 'screen'">
+              <label
+                >Bitrate ceiling (bits/s)
+                <input
+                  v-model.number="draft[source].bitrate"
+                  :aria-label="`${labels[source]} bitrate`"
+                  type="number"
+                  min="100000"
+                  max="50000000"
+                  step="100000"
+              /></label>
+              <label
+                >Codec preference
+                <StudySelect
+                  v-model="draft[source].codec"
+                  :label="`${labels[source]} codec`"
+                  :options="[
+                    { value: 'auto', label: 'Auto' },
+                    ...['av1', 'vp9', 'h264', 'vp8'].map((codec) => ({
+                      value: codec,
+                      label:
+                        codec.toUpperCase() +
+                        (model.capabilities?.codecs.includes(codec)
+                          ? ' · advertised'
+                          : ' · unavailable / unknown'),
+                      disabled: !model.capabilities?.codecs.includes(codec),
+                    })),
+                  ]"
+              /></label>
+              <label
+                >Quality / latency priority
+                <StudySelect
+                  v-model="draft[source].priority"
+                  label="Quality / latency priority"
+                  :options="[
+                    { value: 'balanced', label: 'Balanced' },
+                    { value: 'quality', label: 'Quality · preserve resolution' },
+                    { value: 'latency', label: 'Latency / motion · preserve FPS' },
+                  ]"
+              /></label>
+              <label
+                >Layers
+                <StudySelect
+                  v-model="draft[source].layers"
+                  label="Layers"
+                  :options="[
+                    { value: 'auto', label: 'Auto' },
+                    { value: 'off', label: 'Single spatial layer' },
+                    { value: 'simulcast', label: 'Simulcast (VP8 / H264)' },
+                    { value: 'svc', label: 'SVC (VP9 / AV1)' },
+                  ]"
+              /></label>
+              <label
+                >Content type
+                <StudySelect
+                  v-model="draft[source].content"
+                  label="Content type"
+                  :options="[
+                    { value: 'motion', label: 'Motion' },
+                    { value: 'detail', label: 'Detail / presentation' },
+                    { value: 'text', label: 'Text' },
+                  ]"
+              /></label>
+              <label
+                ><input v-model="draft[source].preserveAspectRatio" type="checkbox" /> Preserve
+                source aspect ratio</label
+              >
+            </template>
+            <p v-else>
+              Receive is a useful render-size ceiling, not a guarantee of an exact SFU layer.
+              Receive bitrate and codec are negotiated by the sender/provider.
+            </p>
+          </details>
+          <p>
+            Layer mode follows the negotiated codec. Latency is an encoder tradeoff, not a latency
+            guarantee. Hardware encoder selection is unavailable.
+          </p>
+        </template>
+      </template>
+      <template v-if="section === 'Audio'">
         <label
-          >Channels
-          <select v-model="draft.audio.channels">
-            <option :value="1">Mono</option>
-            <option :value="2">Stereo intent</option>
-          </select></label
-        >
-        <label
-          ><input v-model="draft.audio.dtx" type="checkbox" /> Discontinuous transmission</label
-        >
+          >Voice preset
+          <StudySelect
+            v-model="draft.audio.mode"
+            label="Voice preset"
+            :options="[
+              { value: 'standard', label: 'Standard' },
+              { value: 'high', label: 'High' },
+              { value: 'studio', label: 'Studio Voice' },
+            ]"
+            @update:model-value="
+              draft.audio = voiceProfile(draft.audio.mode);
+              applyFrom();
+            "
+        /></label>
+        <p v-if="draft.audio.mode === 'studio'">
+          Studio Voice requests 48 kHz Opus with processing off. Use headphones to avoid echo.
+          Browser support varies; this is not lossless audio.
+        </p>
+        <template v-if="draft.mode === 'advanced' || draft.audio.mode === 'studio'">
+          <label
+            v-for="processing in [
+              'echoCancellation',
+              'noiseSuppression',
+              'autoGainControl',
+            ] as const"
+            :key="processing"
+            ><input
+              v-model="draft.audio[processing]"
+              type="checkbox"
+              :disabled="!model.capabilities?.processing.includes(processing)"
+            />
+            {{ processing }}
+            {{
+              model.capabilities?.processing.includes(processing) ? '' : '(unsupported / unknown)'
+            }}</label
+          >
+          <label
+            >Opus ceiling (bits/s)
+            <input
+              v-model.number="draft.audio.bitrate"
+              aria-label="Opus bitrate"
+              type="number"
+              min="16000"
+              max="256000"
+          /></label>
+          <label
+            >Channels
+            <StudySelect
+              label="Channels"
+              :model-value="String(draft.audio.channels)"
+              :options="[
+                { value: '1', label: 'Mono' },
+                { value: '2', label: 'Stereo intent' },
+              ]"
+              @update:model-value="draft.audio.channels = Number($event) as 1 | 2"
+          /></label>
+          <label
+            ><input v-model="draft.audio.dtx" type="checkbox" /> Discontinuous transmission</label
+          >
+        </template>
       </template>
       <p>
         Approximate main-layer upload ceiling:
@@ -287,18 +328,32 @@ async function applyFrom(event: Event, value = draft.value) {
         }}
         GB/hour. Layers and protocol overhead add traffic. Download varies with visible streams.
       </p>
-      <button type="button" @click="applyFrom($event)">Apply media preferences</button>
-      <label>Profile name <input v-model="name" aria-label="Profile name" maxlength="40" /></label>
-      <button type="button" @click="model.save(name)">Save applied profile</button>
-      <div v-for="saved in model.state.saved" :key="saved.name" class="quality-actions">
-        <button type="button" @click="applyFrom($event, saved.quality)">
-          Load {{ saved.name }}</button
-        ><button type="button" @click="model.remove(saved.name)">Delete {{ saved.name }}</button>
-      </div>
+      <button
+        v-if="draft.mode === 'advanced' || section === 'Audio'"
+        type="button"
+        @click="applyFrom($event)"
+      >
+        Apply media preferences
+      </button>
+      <template v-if="section === 'Quality'">
+        <label
+          >Profile name <input v-model="name" aria-label="Profile name" maxlength="40"
+        /></label>
+        <button type="button" @click="model.save(name)">Save applied profile</button>
+        <div v-for="saved in model.state.saved" :key="saved.name" class="quality-actions">
+          <button type="button" @click="applyFrom($event, saved.quality)">
+            Load {{ saved.name }}</button
+          ><button type="button" @click="model.remove(saved.name)">Delete {{ saved.name }}</button>
+        </div>
+      </template>
     </fieldset>
     <p role="status">{{ model.state.message }}</p>
-    <details>
+    <details v-if="section === 'Diagnostics'" open>
       <summary>Live diagnostics · requested vs actual</summary>
+      <p>
+        Deployment tier: {{ model.capabilities?.stage ?? 'basic' }}. Higher requests are reduced to
+        this tier.
+      </p>
       <p>
         Unknown values are shown as ?. Source capture settings are separate from encoded/delivered
         RTP statistics. Source display refresh and pre-capture native resolution are not exposed

@@ -1,0 +1,67 @@
+{
+  "date": "2026-09-20",
+  "browser": "Chromium 153, Windows; emulated viewports",
+  "source": "tests/browser/account-ux.spec.ts; isolated local HTTPS smoke",
+  "screenshots": [
+    {
+      "file": "account-dark-mobile.png",
+      "width": 390,
+      "height": 3097
+    },
+    {
+      "file": "account-desktop.png",
+      "width": 1440,
+      "height": 2054
+    },
+    {
+      "file": "account-mobile.png",
+      "width": 390,
+      "height": 3097
+    },
+    {
+      "file": "account-tablet.png",
+      "width": 820,
+      "height": 2746
+    },
+    {
+      "file": "auth-dark-mobile.png",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "file": "auth-light.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "auth-tablet.png",
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "file": "delete-confirmation.png",
+      "width": 390,
+      "height": 2775
+    },
+    {
+      "file": "local-stack-home.png",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "onboarding-appearance.png",
+      "width": 2560,
+      "height": 1080
+    },
+    {
+      "file": "onboarding-identity.png",
+      "width": 2560,
+      "height": 1080
+    },
+    {
+      "file": "onboarding-ultrawide.png",
+      "width": 2560,
+      "height": 1080
+    }
+  ]
+}

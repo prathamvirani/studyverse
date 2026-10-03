@@ -45,6 +45,13 @@ export function applyMediaAction(
     throw new Error('INVALID_REQUEST');
   };
   switch (action.type) {
+    case 'enqueue-play':
+      if (s.queue.length >= 50) invalid();
+      s.queue.push(action.videoId);
+      s.current = s.queue.length - 1;
+      s.position = 0;
+      s.playing = true;
+      break;
     case 'enqueue':
       if (s.queue.length >= 50) invalid();
       s.queue.push(action.videoId);
@@ -68,6 +75,15 @@ export function applyMediaAction(
       s.position = 0;
       s.playing = false;
       break;
+    case 'move': {
+      if (action.from >= s.queue.length || action.to >= s.queue.length) invalid();
+      const order = s.queue.map((_, index) => index);
+      const [moving] = order.splice(action.from, 1);
+      order.splice(action.to, 0, moving!);
+      s.queue = order.map((index) => previous.queue[index]!);
+      if (s.current !== null) s.current = order.indexOf(s.current);
+      break;
+    }
     case 'play':
       if (s.current === null) invalid();
       s.playing = true;
@@ -88,24 +104,7 @@ export function applyMediaAction(
   }
   return s;
 }
-/** Accept only public YouTube identifiers, never persist pasted URLs or query credentials. */
-export function youtubeContentId(input: string): string | null {
-  const value = input.trim();
-  if (/^[A-Za-z0-9_-]{11}$/.test(value)) return value;
-  try {
-    const u = new URL(value);
-    if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
-    let id: string | null = null;
-    if (u.hostname === 'youtu.be' && /^\/[^/]+$/.test(u.pathname)) id = u.pathname.slice(1);
-    if (['youtube.com', 'www.youtube.com', 'music.youtube.com'].includes(u.hostname)) {
-      if (u.pathname === '/watch') id = u.searchParams.get('v');
-      else if (/^\/(embed|shorts)\/[^/]+$/.test(u.pathname)) id = u.pathname.split('/')[2] ?? null;
-    }
-    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
-  } catch {
-    return null;
-  }
-}
+export { youtubeContentId } from '@study/contracts';
 export function correctMediaDrift(
   player: SharedVideoPlayer,
   state: MediaPlayback,
@@ -114,7 +113,7 @@ export function correctMediaDrift(
 ) {
   if (!force && state.playing && player.buffering?.()) return;
   const target = mediaPosition(state, serverNow);
-  if (force || Math.abs(player.position() - target) > 1.5) player.seek(target);
+  if (force || (state.playing && Math.abs(player.position() - target) > 1.5)) player.seek(target);
   player.rate(state.rate);
   if (state.playing !== player.playing()) {
     if (state.playing) player.play();

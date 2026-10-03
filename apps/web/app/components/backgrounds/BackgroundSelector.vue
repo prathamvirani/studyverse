@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Image, StudySelect } from '@study/ui';
 import type { BackgroundModel } from '../../room/background-model';
 const props = defineProps<{ model: BackgroundModel }>(),
   state = props.model.state;
@@ -58,7 +59,7 @@ async function upload(event: Event) {
     aria-controls="background-selector"
     @click="state.open = true"
   >
-    <span aria-hidden="true" class="dock-icon">▧</span><small>Background</small>
+    <Image :size="21" aria-hidden="true" /><small>Background</small>
   </button>
   <Teleport to=".room-shell">
     <dialog
@@ -85,12 +86,15 @@ async function upload(event: Event) {
       </p>
       <template v-else>
         <div class="background-tools">
-          <label
-            >Apply to<select v-model="scope" aria-label="Background scope">
-              <option value="personal">My device</option>
-              <option v-if="state.canControl" value="room">Room default</option>
-            </select></label
-          ><button :aria-pressed="state.paused" @click="model.pause()">
+          <StudySelect
+            label="Background scope"
+            v-model="scope"
+            :options="[
+              { value: 'personal', label: 'My device' },
+              ...(state.canControl ? [{ value: 'room', label: 'Room default' }] : []),
+            ]"
+          />
+          <button :aria-pressed="state.paused" @click="model.pause()">
             {{ state.paused ? 'Resume motion' : 'Pause motion' }}
           </button>
         </div>
@@ -120,11 +124,14 @@ async function upload(event: Event) {
               :disabled="state.busy"
               @click="choose(a.id)"
             >
-              <img
+              <NuxtImg
                 :src="a.thumbnail"
                 alt=""
-                width="320"
-                height="180"
+                width="160"
+                height="90"
+                densities="1x 2x"
+                format="webp"
+                :quality="65"
                 loading="lazy"
                 decoding="async"
               /><span>{{ a.title }}</span
@@ -136,7 +143,7 @@ async function upload(event: Event) {
               :aria-pressed="state.favorites.includes(a.id)"
               @click="model.favorite(a.id)"
             >
-              {{ state.favorites.includes(a.id) ? '★' : '☆' }}
+              <NuxtIcon name="lucide:star" aria-hidden="true" />
             </button>
           </article>
           <article v-for="a in customs" :key="a.id" class="background-card">
@@ -158,7 +165,7 @@ async function upload(event: Event) {
                 :aria-pressed="state.favorites.includes(a.id)"
                 @click="model.favorite(a.id)"
               >
-                ☆</button
+                <NuxtIcon name="lucide:star" aria-hidden="true" /></button
               ><button aria-label="Remove custom image" @click="model.remove(a.id)">Remove</button>
             </div>
           </article>
@@ -193,6 +200,15 @@ async function upload(event: Event) {
   </Teleport>
 </template>
 <style>
+.background-star .iconify,
+.custom-actions .iconify {
+  width: 18px;
+  height: 18px;
+}
+.background-star[aria-pressed='true'] .iconify path,
+.custom-actions button[aria-pressed='true'] .iconify path {
+  fill: currentColor;
+}
 .room-shell .background-selector {
   position: fixed;
   inset: auto 0 90px;
@@ -202,7 +218,7 @@ async function upload(event: Event) {
   padding: 20px;
   color: #f4eee0;
   overflow: auto;
-  background: #20343cf2;
+  background: var(--glass-elevated);
   border: 1px solid #eee4c140;
   box-shadow: 0 24px 80px #07121980;
 }

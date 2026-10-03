@@ -97,6 +97,10 @@ it('follows future feature public exports before accepting them into a browser b
 });
 it.each([
   ['packages/core/src/bad.ts', '@study/chat'],
+  ['packages/core/src/bad.ts', '@study/personal-media/browser'],
+  ['packages/features/room-media/src/bad.ts', '@study/personal-media/browser'],
+  ['packages/feature-sdk/src/bad.ts', '@study/adapters/youtube/personal'],
+  ['packages/features/personal-media/src/bad.ts', '@study/adapters/vimeo/browser'],
   ['packages/core/src/bad.ts', '../../features/chat/src/internal.ts'],
   ['packages/features/chat/src/bad.ts', '@study/tasks/internal/repository'],
   ['packages/features/chat/src/bad.ts', '../../tasks/src/repository.ts'],
@@ -127,6 +131,17 @@ it('allows public contracts and registered browser adapters', () => {
   expect(importViolations('packages/features/chat/src/module.ts', '@study/contracts')).toEqual([]);
   expect(importViolations('apps/web/app/registry.ts', '@study/core/browser')).toEqual([]);
   expect(importViolations('apps/web/app/preferences.ts', '@study/adapters/indexeddb')).toEqual([]);
+});
+
+it('allows only the Nuxt configuration to import its build font provider', () => {
+  expect(
+    importViolations('apps/web/nuxt.config.ts', '../../infra/nuxt/local-font-provider.ts'),
+  ).toEqual([]);
+  expect(
+    importViolations('apps/web/app/app.vue', '../../../infra/nuxt/local-font-provider.ts'),
+  ).not.toEqual([]);
+  expect(importViolations('apps/web/app/fonts.ts', 'node:fs/promises')).not.toEqual([]);
+  expect(importViolations('apps/web/nuxt.config.ts', '../../infra/nuxt/other.ts')).not.toEqual([]);
 });
 
 it('room media preserves feature-owned SQL and follows the YouTube adapter browser graph', () => {

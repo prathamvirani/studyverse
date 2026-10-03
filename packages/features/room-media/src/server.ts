@@ -8,9 +8,11 @@ import type {
   RoomOccupancy,
   SocialDirectory,
   PeopleDirectory,
+  MediaMetadataResolver,
 } from '@study/feature-sdk';
 import {
   mediaRoomSchema,
+  accountDeletedSchema,
   roomOccupancyEventSchema,
   mediaViewSchema,
   mediaClockSchema,
@@ -20,6 +22,8 @@ import {
   mediaSuggestionDecisionSchema,
   mediaPlaybackSchema,
   mediaSettingsSchema,
+  mediaMetadataInputSchema,
+  mediaMetadataSchema,
 } from '@study/contracts';
 import type { MediaPlayback, MediaSettings, MediaView } from '@study/contracts';
 import {
@@ -54,7 +58,9 @@ export function roomMediaModule(deps: {
   people: PeopleDirectory;
   fail: Fail;
   enabled?: boolean;
+  accountEvents?: boolean;
   now?: () => number;
+  metadata?: MediaMetadataResolver;
 }): FeatureModule {
   const { db, rooms, occupancy, fail } = deps,
     now = deps.now ?? Date.now;
@@ -117,8 +123,12 @@ export function roomMediaModule(deps: {
   async function view(roomId: string, userId: string, s: Session): Promise<MediaView> {
     const role = await rooms.role(userId, roomId);
     if (!role) return fail('FORBIDDEN');
-    const person = async (id: string) =>
-      (await deps.social.blocked(userId, id)) ? null : await deps.people.person(id);
+    const person = async (id: string) => {
+      if (await deps.social.blocked(userId, id)) return null;
+      const identity = await deps.people.person(id);
+      // Keep the established media projection independent of optional social identity fields.
+      return identity ? { id: identity.id, name: identity.name } : null;
+    };
     const changedBy = (await Promise.all(s.changedBy.map(person))).filter((p) => p !== null);
     const suggestions: MediaView['suggestions'] = [];
     for (const suggestion of s.suggestions) {
@@ -195,6 +205,21 @@ export function roomMediaModule(deps: {
     else if (!s.changedBy.includes(userId)) s.changedBy = [...s.changedBy, userId].slice(-200);
   }
   const operations = [
+    defineOperation({
+      id: 'room-media.metadata',
+      kind: 'query',
+      input: mediaMetadataInputSchema,
+      output: mediaMetadataSchema,
+      access,
+      rate: { limit: 120, windowMs: 60000 },
+      handle: async (i) =>
+        deps.metadata?.resolve(i.videoId) ?? {
+          videoId: i.videoId,
+          provider: 'youtube' as const,
+          status: 'failed' as const,
+          title: 'Couldn’t load',
+        },
+    }),
     defineOperation({
       id: 'room-media.snapshot',
       kind: 'query',
@@ -304,7 +329,10 @@ export function roomMediaModule(deps: {
   ];
   return {
     ...roomMediaDefinition,
-    dependencies: [{ id: 'presence', major: 1 }],
+    dependencies: [
+      { id: 'presence', major: 1 },
+      ...(deps.accountEvents ? [{ id: 'identity', major: 1 }] : []),
+    ],
     capabilities: ['room-media.v1'],
     permissions: [
       {
@@ -329,9 +357,36 @@ export function roomMediaModule(deps: {
       ...(o.id === 'room-media.snapshot' ? { snapshotEvent: o.id } : {}),
     })),
     subscriptions: [
+      ...(deps.accountEvents
+        ? [
+            {
+              event: 'identity.deleted',
+              handle: async (payload: unknown) => {
+                const { userId } = accountDeletedSchema.parse(payload);
+                for (const roomId of sessions.keys())
+                  await serial(roomId, async () => {
+                    const s = sessions.get(roomId);
+                    if (!s) return;
+                    s.suggestions = s.suggestions.filter((x) => x.userId !== userId);
+                    s.changedBy = s.changedBy.filter((id) => id !== userId);
+                    if (s.controller === userId) s.controller = null;
+                    if (
+                      !(
+                        await db.query(
+                          sql`SELECT room_id FROM room_media.baselines WHERE room_id=${roomId}`,
+                        )
+                      ).length &&
+                      !(await occupants(roomId)).occupied
+                    )
+                      sessions.delete(roomId);
+                  });
+              },
+            },
+          ]
+        : []),
       {
         event: 'presence.room-occupancy',
-        handle: async (payload) => {
+        handle: async (payload: unknown) => {
           if (deps.enabled === false) return;
           const event = roomOccupancyEventSchema.parse(payload);
           await serial(event.roomId, async () => {
@@ -353,7 +408,8 @@ export function roomMediaModule(deps: {
       timer = setInterval(() => {
         for (const roomId of sessions.keys())
           void serial(roomId, async () => {
-            const s = sessions.get(roomId)!;
+            const s = sessions.get(roomId);
+            if (!s) return;
             reconcileOccupancy(s, await occupants(roomId));
           }).catch(() => c.observer.record('room-media.sweep.failed'));
       }, 2000);

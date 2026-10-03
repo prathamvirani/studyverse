@@ -1,6 +1,23 @@
 import { z } from 'zod';
 
 export const youtubeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{11}$/);
+export const mediaMetadataInputSchema = z.strictObject({
+  roomId: z.uuid(),
+  videoId: youtubeIdSchema,
+});
+export const mediaMetadataSchema = z.strictObject({
+  videoId: youtubeIdSchema,
+  provider: z.literal('youtube'),
+  status: z.enum(['ready', 'unavailable', 'failed']),
+  title: z.string().min(1).max(300),
+  channel: z.string().max(200).optional(),
+  thumbnail: z
+    .string()
+    .regex(/^https:\/\/i\.ytimg\.com\/vi\/[A-Za-z0-9_-]{11}\/hqdefault\.jpg$/)
+    .optional(),
+  duration: z.number().min(0).max(604800).optional(),
+});
+export type MediaMetadata = z.infer<typeof mediaMetadataSchema>;
 export const ambienceIdSchema = z.enum(['rain', 'white', 'pink', 'brown']);
 const level = z.number().min(0).max(1);
 export const ambienceLevelsSchema = z.strictObject({
@@ -26,8 +43,14 @@ export const mediaPlaybackSchema = z.strictObject({
 });
 export const mediaActionSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('enqueue'), videoId: youtubeIdSchema }),
+  z.strictObject({ type: z.literal('enqueue-play'), videoId: youtubeIdSchema }),
   z.strictObject({ type: z.literal('remove'), index: z.number().int().min(0).max(49) }),
   z.strictObject({ type: z.literal('select'), index: z.number().int().min(0).max(49) }),
+  z.strictObject({
+    type: z.literal('move'),
+    from: z.number().int().min(0).max(49),
+    to: z.number().int().min(0).max(49),
+  }),
   z.strictObject({ type: z.literal('play') }),
   z.strictObject({ type: z.literal('pause') }),
   z.strictObject({ type: z.literal('seek'), position: z.number().min(0).max(604800) }),

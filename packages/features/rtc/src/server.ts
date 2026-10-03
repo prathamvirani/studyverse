@@ -4,6 +4,7 @@ import {
   mediaLeaseSchema,
   mediaCredentialSchema,
   okSchema,
+  accountDeletedSchema,
 } from '@study/contracts';
 import { defineOperation } from '@study/feature-sdk';
 import type {
@@ -26,6 +27,7 @@ export function rtcModule(deps: {
   blocked?: (a: string, b: string) => Promise<boolean>;
   fail: Fail;
   uuid: () => string;
+  accountEvents?: boolean;
   now?: () => number;
 }): FeatureModule {
   const now = deps.now ?? Date.now;
@@ -239,6 +241,23 @@ export function rtcModule(deps: {
       input: 'body',
       operation: o.id,
     })),
+    dependencies: deps.accountEvents ? [{ id: 'identity', major: 1 }] : [],
+    subscriptions: deps.accountEvents
+      ? [
+          {
+            event: 'identity.deleted',
+            handle: async (payload) => {
+              const { userId } = accountDeletedSchema.parse(payload);
+              await Promise.allSettled(
+                [...leases]
+                  .filter(([, l]) => l.actor.subjectId === userId)
+                  .map(([id, l]) => retire(id, l.roomId)),
+              );
+              await sweep();
+            },
+          },
+        ]
+      : [],
     start: async () => {
       await deps.authority.reset?.();
       timer = setInterval(() => {

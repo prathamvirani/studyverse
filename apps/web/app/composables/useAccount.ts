@@ -1,6 +1,6 @@
 import { okSchema, profileSchema } from '@study/contracts';
 import type { z } from '@study/contracts';
-import { createApiClient } from '../lib/api-client';
+import { ApiError, createApiClient } from '../lib/api-client';
 
 export function useAccount() {
   const profile = useState<z.infer<typeof profileSchema> | null>('account-profile', () => null);
@@ -8,7 +8,8 @@ export function useAccount() {
   async function load() {
     try {
       profile.value = await api.request('/api/v1/account/me', profileSchema);
-    } catch {
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
       profile.value = null;
     }
     return profile.value;

@@ -107,12 +107,14 @@ export function createSocialClient() {
           ws.close();
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (current !== generation) return;
         state.connected = false;
-        state.participants = [];
-        state.snapshot = null;
-        state.invitations = [];
+        if (event.code === 1008) {
+          state.participants = [];
+          state.snapshot = null;
+          state.invitations = [];
+        }
         pending.clear();
         if (!stopped)
           reconnect = setTimeout(

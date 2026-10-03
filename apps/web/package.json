@@ -9,18 +9,27 @@
     "typecheck": "nuxt prepare && nuxt typecheck"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "@iconify-json/lucide": "1.2.138",
+    "@nuxt/fonts": "0.14.0",
+    "@nuxt/icon": "2.5.1",
+    "@nuxt/image": "2.1.0",
     "@study/adapters": "0.0.0",
+    "@study/backgrounds": "*",
     "@study/contracts": "0.0.0",
     "@study/core": "0.0.0",
-    "@study/identity": "0.0.0",
-    "@study/rooms": "0.0.0",
     "@study/friends": "0.0.0",
+    "@study/identity": "0.0.0",
+    "@study/pomodoro": "*",
+    "@study/personal-media": "*",
+    "@study/rooms": "0.0.0",
+    "@study/rtc": "*",
     "@study/ui": "0.0.0",
+    "@vueuse/core": "15.0.0",
+    "@vueuse/nuxt": "15.0.0",
     "nuxt": "4.5.2",
     "nuxt-security": "2.6.0",
-    "vue": "3.5.42",
-    "@study/pomodoro": "*",
-    "@study/backgrounds": "*",
-    "@study/rtc": "*"
+    "vue": "3.5.42"
   }
 }

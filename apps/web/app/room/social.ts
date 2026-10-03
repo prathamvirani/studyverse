@@ -1,6 +1,7 @@
 import { defineComponent, h } from 'vue';
 import type { UiRegistry } from '@study/core/browser';
 import type { SocialClient } from '../lib/social';
+import { StudySelect } from '@study/ui';
 import { statusLabels } from '../lib/social';
 import { okSchema } from '@study/contracts';
 import type { createApiClient } from '../lib/api-client';
@@ -34,21 +35,13 @@ export function registerRoomSocial(
         props: { participantId: { type: String, required: true } },
         setup: (props) => () => {
           if (props.participantId === 'self')
-            return h('label', [
-              'Your status',
-              h(
-                'select',
-                {
-                  'aria-label': 'Your status',
-                  value: social.state.status,
-                  onChange: (e: Event) =>
-                    social.status(
-                      (e.target as HTMLSelectElement).value as keyof typeof statusLabels,
-                    ),
-                },
-                Object.entries(statusLabels).map(([value, label]) => h('option', { value }, label)),
-              ),
-            ]);
+            return h(StudySelect, {
+              label: 'Your status',
+              modelValue: social.state.status,
+              options: Object.entries(statusLabels).map(([value, label]) => ({ value, label })),
+              'onUpdate:modelValue': (value: string) =>
+                social.status(value as keyof typeof statusLabels),
+            });
           const person = social.state.participants.find((p) => p.id === props.participantId);
           if (!person) return h('p', 'Participant unavailable');
           const friend = social.state.snapshot?.friends.some((p) => p.id === person.id),

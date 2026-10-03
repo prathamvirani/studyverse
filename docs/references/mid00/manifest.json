@@ -1,0 +1,296 @@
+{
+  "capturedAt": "2026-09-13T16:18:37.347Z",
+  "browser": "chromium",
+  "platform": "win32",
+  "fixture": "Isolated study_test database, fake Google OAuth, no device capture or external player enabled. RTC harness uses quality stage A; normal deployment remains basic.",
+  "captures": [
+    {
+      "name": "auth-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/",
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 1
+    },
+    {
+      "name": "account-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/account",
+      "document": {
+        "width": 1440,
+        "height": 1230
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 0
+    },
+    {
+      "name": "create-room-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/new",
+      "document": {
+        "width": 1440,
+        "height": 980
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 1,
+      "heroes": 0
+    },
+    {
+      "name": "room-details-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 1144
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 1
+    },
+    {
+      "name": "edit-room-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 1695
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 1,
+      "heroes": 1
+    },
+    {
+      "name": "home-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/",
+      "document": {
+        "width": 1440,
+        "height": 1410
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 1
+    },
+    {
+      "name": "my-rooms-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/my-rooms",
+      "document": {
+        "width": 1440,
+        "height": 972
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 0
+    },
+    {
+      "name": "discover-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/discover",
+      "document": {
+        "width": 1440,
+        "height": 972
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 0
+    },
+    {
+      "name": "friends-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/friends",
+      "document": {
+        "width": 1440,
+        "height": 1168
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 2,
+      "heroes": 1
+    },
+    {
+      "name": "room-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 5,
+      "heroes": 0
+    },
+    {
+      "name": "more-settings-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 9,
+      "heroes": 0
+    },
+    {
+      "name": "more-advanced-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 26,
+      "heroes": 0
+    },
+    {
+      "name": "media-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 1440,
+        "height": 900
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 5,
+      "heroes": 0
+    },
+    {
+      "name": "media-tablet",
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 768,
+        "height": 1024
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 5,
+      "heroes": 0
+    },
+    {
+      "name": "media-mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 390,
+        "height": 844
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 5,
+      "heroes": 0
+    },
+    {
+      "name": "room-mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/rooms/[fixture]",
+      "document": {
+        "width": 390,
+        "height": 844
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 5,
+      "heroes": 0
+    },
+    {
+      "name": "my-rooms-mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "route": "/my-rooms",
+      "document": {
+        "width": 390,
+        "height": 964
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 0
+    },
+    {
+      "name": "my-rooms-ultrawide",
+      "viewport": {
+        "width": 3440,
+        "height": 1440
+      },
+      "route": "/my-rooms",
+      "document": {
+        "width": 3440,
+        "height": 1440
+      },
+      "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "colorScheme": "light",
+      "nativeSelects": 0,
+      "heroes": 0
+    }
+  ]
+}

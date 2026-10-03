@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { roomMediaModules } from '../../apps/api/src/room-media.ts';
 import { backgroundsModules } from '../../apps/api/src/backgrounds.ts';
 import { rtcModules } from '../../apps/api/src/rtc.ts';
@@ -19,7 +20,8 @@ import {
   sql,
 } from '@study/adapters/postgres';
 import { identityModule, identityAccounts } from '@study/identity/server';
-import { roomsModule } from '@study/rooms/server';
+import { roomsModule, referralAttribution } from '@study/rooms/server';
+import { backgroundPreviews } from '@study/backgrounds/server';
 import { socialDirectory } from '@study/friends/server';
 import { socialComposition } from '../../apps/api/src/social.ts';
 import { createRedis, RedisEphemeralStore } from '@study/adapters/redis';
@@ -65,7 +67,13 @@ const sessions = new Sessions(new PostgresSessionStore(db)),
 const redis = createRedis(`redis://:${local.REDIS_PASSWORD}@localhost:6380`);
 redis.on('error', () => {});
 await redis.connect();
-const social = socialComposition(db, new RedisEphemeralStore(redis), new PostgresSessionStore(db));
+const social = socialComposition(
+  db,
+  new RedisEphemeralStore(redis),
+  new PostgresSessionStore(db),
+  true,
+  true,
+);
 const { app } = await createServer({
   sessions,
   limiter: new MemoryLimiter(),
@@ -74,6 +82,7 @@ const { app } = await createServer({
     ...backgroundsModules(db),
     dummyModule().module,
     identityModule({
+      referrals: referralAttribution(db),
       db,
       directory: new PostgresSessionDirectory(db),
       fail,
@@ -92,21 +101,46 @@ const { app } = await createServer({
       })),
     }),
     roomsModule({
+      inviteKey: 'ab'.repeat(32),
       db,
       accountExists: identityAccounts(db).exists,
       fail,
       social: socialDirectory(db),
+      presence: social.presence,
+      backgrounds: backgroundPreviews(db),
     }),
     ...social.modules,
-    ...roomMediaModules(db, social.occupancy),
-    ...rtcModules(db, new PostgresSessionStore(db), {
-      RTC_ENABLED: 'true',
-      LIVEKIT_ROOM_PREFIX: 'test-study-',
-      LIVEKIT_URL: 'wss://localhost:8449',
-      LIVEKIT_SERVICE_URL: 'http://127.0.0.1:7880',
-      LIVEKIT_API_KEY: local.LIVEKIT_API_KEY,
-      LIVEKIT_API_SECRET: local.LIVEKIT_API_SECRET,
+    ...roomMediaModules(db, social.occupancy, {}, true, {
+      resolve: async (videoId) => ({
+        videoId,
+        provider: 'youtube',
+        status: videoId === 'abcdefghijk' ? 'unavailable' : 'ready',
+        title:
+          videoId === 'abcdefghijk'
+            ? 'Unavailable'
+            : videoId === 'M7lc1UVf-VE'
+              ? 'YouTube Developers Live: Embedded Web Player Customization'
+              : 'A quiet study session',
+        channel: 'Google for Developers',
+        duration: 600,
+        ...(videoId === 'abcdefghijk'
+          ? {}
+          : { thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` }),
+      }),
     }),
+    ...rtcModules(
+      db,
+      new PostgresSessionStore(db),
+      {
+        RTC_ENABLED: 'true',
+        LIVEKIT_ROOM_PREFIX: 'test-study-',
+        LIVEKIT_URL: 'wss://localhost:8449',
+        LIVEKIT_SERVICE_URL: 'http://127.0.0.1:7880',
+        LIVEKIT_API_KEY: local.LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET: local.LIVEKIT_API_SECRET,
+      },
+      true,
+    ),
   ],
   config: readConfig({
     NODE_ENV: 'test',
@@ -180,7 +214,9 @@ const proxy = createHttpsServer(
       response.writeHead(200, { 'Content-Type': 'text/css' });
       response.end(
         (readFileSync('apps/web/app/app.vue', 'utf8').match(/<style>([\s\S]*?)<\/style>/)?.[1] ??
-          '') + readFileSync('apps/web/app/room/room.css', 'utf8'),
+          '') +
+          readFileSync('apps/web/app/room/room.css', 'utf8') +
+          readFileSync('apps/web/app/components/room/room-refresh.css', 'utf8'),
       );
       return;
     }
@@ -200,13 +236,24 @@ const proxy = createHttpsServer(
         : request.url?.startsWith('/api/')
           ? 3009
           : 3008;
+    const clientHash = createHash('sha256')
+      .update(request.headers.cookie?.match(/__Host-study-session=([^;]+)/)?.[1] ?? 'anonymous')
+      .digest();
     const upstream = httpRequest(
       {
         hostname: '127.0.0.1',
         port,
         path: disabledJoin ? '/api/v1/rtc/join' : request.url,
         method: request.method,
-        headers: request.headers,
+        // Many isolated browser users share this loopback proxy. Give the Nuxt page
+        // limiter a stable synthetic client per session, leaving API limits untouched.
+        headers:
+          port === 3008
+            ? {
+                ...request.headers,
+                'x-forwarded-for': `198.18.${clientHash[0]}.${clientHash[1]}`,
+              }
+            : request.headers,
       },
       (result) => {
         response.writeHead(result.statusCode ?? 502, result.headers);

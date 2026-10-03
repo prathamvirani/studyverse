@@ -304,10 +304,14 @@ export async function createServer(dependencies: ServerDependencies) {
                 if (snapshots.get(key) === item) item.last = encoded;
               }
             }
-          } catch {
-            // Never retain a previously authorized subscription after any failed check.
-            snapshots.clear();
-            socket.close(1008, 'Subscription unavailable');
+          } catch (error) {
+            const safe = safeError(error);
+            observer.record('realtime.snapshot.rejected', { code: safe.code });
+            // Retrying transient delivery never sends cached payloads. Every next read reauthorizes.
+            if (!['RATE_LIMITED', 'UNAVAILABLE'].includes(safe.code)) {
+              snapshots.clear();
+              socket.close(1008, 'Subscription unavailable');
+            }
           } finally {
             delivering = false;
           }
@@ -401,6 +405,8 @@ export async function createServer(dependencies: ServerDependencies) {
                     connectionId,
                   },
                 );
+                if (binding.command === 'foundation.unsubscribe')
+                  snapshots.delete((parsed.data.payload as { command: string }).command);
                 if (binding.snapshotEvent && !closed)
                   snapshots.set(binding.command, {
                     operation: binding.operation,
@@ -424,8 +430,7 @@ export async function createServer(dependencies: ServerDependencies) {
                     error: { code: safe.code, message: safe.message, requestId },
                   }),
                 );
-              if (safe.code === 'UNAUTHENTICATED' || safe.code === 'UNAVAILABLE')
-                socket.close(1008, 'Session unavailable');
+              if (safe.code === 'UNAUTHENTICATED') socket.close(1008, 'Session unavailable');
             } finally {
               pending--;
             }

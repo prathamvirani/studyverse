@@ -1,0 +1,226 @@
+{
+  "phase": "MID-04A",
+  "status": "COMPLETE — AWAITING_REVIEW",
+  "ownerAccepted": false,
+  "mid05Started": false,
+  "unit": {
+    "files": 36,
+    "passed": 226,
+    "failed": 0
+  },
+  "focused": {
+    "cases": 28,
+    "initialPassed": 22,
+    "initialFailed": 6,
+    "repairPassed": 11
+  },
+  "browserRegression": {
+    "fullRuns": 1,
+    "suites": 18,
+    "cases": 73,
+    "passed": 69,
+    "failed": 4,
+    "skipped": 0,
+    "retries": 0,
+    "minutes": 10.4,
+    "firstCorrections": {
+      "passed": 11,
+      "failed": 3,
+      "cases": 14
+    },
+    "finalCorrections": {
+      "passed": 7,
+      "failed": 0,
+      "cases": 7,
+      "seconds": 58.7
+    },
+    "distinctCasesWithPassingEvidence": 73,
+    "cleanFullRun": false,
+    "coverage": "Composite evidence from the single full run and scoped corrections.",
+    "excludedSuites": ["rtc-live.spec.ts", "rtc-quality.spec.ts", "rtc-sfu.spec.ts"]
+  },
+  "checksPassed": [
+    "owned source/test/report/evidence formatting",
+    "lint and architecture boundaries",
+    "package and application typecheck",
+    "contract parity",
+    "source security scan",
+    "secret scan",
+    "production API/web build",
+    "git diff whitespace"
+  ],
+  "devTables": 22,
+  "allDevDataAndMigrationLedgerUnchanged": true,
+  "httpsSmoke": {
+    "webStatus": 200,
+    "readyStatus": 200,
+    "readyBody": {
+      "status": "ok"
+    },
+    "providersStatus": 200
+  },
+  "containerPreservation": {
+    "changedContainerServices": ["web"],
+    "retainedContainers": ["api", "livekit", "postgres", "proxy", "redis"],
+    "services": {
+      "api": {
+        "state": "running",
+        "health": "healthy"
+      },
+      "livekit": {
+        "state": "running",
+        "health": "healthy"
+      },
+      "postgres": {
+        "state": "running",
+        "health": "healthy"
+      },
+      "proxy": {
+        "state": "running",
+        "health": ""
+      },
+      "redis": {
+        "state": "running",
+        "health": "healthy"
+      },
+      "web": {
+        "state": "running",
+        "health": "healthy"
+      }
+    }
+  },
+  "integrity": {
+    "baselineFiles": 683,
+    "protectedBaselineFiles": 650,
+    "allProtectedBaselineHashesMatch": true,
+    "unexpectedChanges": [],
+    "changedBaselineFiles": [
+      "apps/web/app/components/CompactLink.vue",
+      "apps/web/app/components/GlassPreference.vue",
+      "apps/web/app/components/RoomAddressEditor.vue",
+      "apps/web/app/components/RoomPage.vue",
+      "apps/web/app/components/StudyContextMenu.vue",
+      "apps/web/app/components/backgrounds/EnvironmentSurface.vue",
+      "apps/web/app/components/media/RoomMediaPanel.vue",
+      "apps/web/app/components/productivity/PomodoroPanel.vue",
+      "apps/web/app/components/productivity/TasksPanel.vue",
+      "apps/web/app/components/room/RoomShell.vue",
+      "apps/web/app/components/room/WorkspaceHost.vue",
+      "apps/web/app/lib/workspace-popouts.ts",
+      "apps/web/app/room/background-model.ts",
+      "apps/web/app/room/productivity.ts",
+      "apps/web/app/room/rtc.ts",
+      "apps/web/app/room/social.ts",
+      "docs/reports/MID_04A_OWNER_REVIEW_CORRECTIONS_AND_ROOM_STABILITY_REPORT.md",
+      "packages/core/src/workspace.ts",
+      "packages/ui/src/components/popover.ts",
+      "packages/ui/src/components/primitives.ts",
+      "packages/ui/src/index.ts",
+      "packages/ui/src/styles/primitives.css",
+      "packages/ui/src/styles/tokens.css",
+      "tests/browser/companion-review.spec.ts",
+      "tests/browser/identity-rooms.spec.ts",
+      "tests/browser/layout-entry-followup.spec.ts",
+      "tests/browser/owner-corrections.spec.ts",
+      "tests/browser/owner-qa-followup.spec.ts",
+      "tests/browser/productivity.spec.ts",
+      "tests/browser/room-workspace.spec.ts",
+      "tests/browser/social.spec.ts",
+      "tests/unit/background-lifecycle.test.ts",
+      "tests/unit/room-stability.test.ts"
+    ],
+    "historicalReferencesRestored": 99,
+    "historicalReferenceFiles": 263,
+    "previousReportContentPreserved": true,
+    "previousReportContentHashMatches": true,
+    "backendAndMigrationsChanged": false
+  },
+  "captures": [
+    {
+      "path": "actual-selected-preentry.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "051d9e512b86abbca8426e7f46859efd99b029675a0dae29a06c87f2782b87e2"
+    },
+    {
+      "path": "address-invite-desktop.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "e53f4d4f2a68e97a6d092ecf84fecf85ef6ab7f6342bd9f204534514ddaff62a"
+    },
+    {
+      "path": "address-invite-narrow.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "ec358e1f238f7c0315ffdd1757d2d4e9827d6168ea7bb3d543f2906ae7b5a76c"
+    },
+    {
+      "path": "compact-controls-companion.png",
+      "width": 720,
+      "height": 240,
+      "sha256": "e3b4035f43ebf14f769506122589753a8a9b95a0fcefeb9cd975e043ed5e2206"
+    },
+    {
+      "path": "identity-cedar-library.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "282289f951395ee1ce3e71438ad8a7c652d7ef98f7ef4de369226c1401d763f5"
+    },
+    {
+      "path": "identity-morning-studio.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "fc384264dfc9536018234409d5d33915adb26e956413fa10427d3da0135709f2"
+    },
+    {
+      "path": "identity-night-observatory.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "2822798354595501886769292823c63b25d89f0c81cb645ee6782f90e248f801"
+    },
+    {
+      "path": "participant-grid-220.png",
+      "width": 220,
+      "height": 600,
+      "sha256": "be854447c7e19e06c2ecb86b2e7fac9e6d2eae4b0da5bd38bc852c09476b4cb8"
+    },
+    {
+      "path": "participant-grid-720.png",
+      "width": 720,
+      "height": 300,
+      "sha256": "30367a1c370bc79d40608c84b08f2c264edf389caaf026fb0213dc48034ea779"
+    },
+    {
+      "path": "participant-popover.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "ce28af25513a86ae8229e9066d996889a1622162873e62304ee6bbbc305a0c54"
+    },
+    {
+      "path": "same-selected-admitted.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "aec4f95a6ca39e9228ef1cb25e9560e2b9876aa73e6490dfbf0a52a2d50f5052"
+    },
+    {
+      "path": "timer-settings-desktop.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "817df99f03080982438a5c7d2df0c932c8751096b7e599ea5057003022bed5ce"
+    },
+    {
+      "path": "timer-settings-narrow.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "6c974f0da15393636719a816b0e1ae3394dfed2687c45006628e4f70e5934d49"
+    },
+    {
+      "path": "usable-lower-workspace.png",
+      "width": 1440,
+      "height": 1000,
+      "sha256": "b16ea986c7b003b47c8e6fa63e09a3035af8641539a7ac6f3eb44d488e6355ce"
+    }
+  ],
+  "visuallyInspectedCaptures": 14,
+  "limits": "Local Chromium; deterministic YouTube fixture and synthetic capture. No cross-browser, physical device or real-provider playback certification."
+}

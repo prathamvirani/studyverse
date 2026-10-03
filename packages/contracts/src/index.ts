@@ -1,4 +1,11 @@
 import { z } from 'zod';
+export const realtimeUnsubscribeSchema = z.strictObject({
+  command: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z][a-z0-9.-]+$/),
+});
 export { z } from 'zod';
 export * from './identity.ts';
 export * from './social.ts';
@@ -70,6 +77,7 @@ export const extensionPoints = [
   'workspaceTile',
   'roomMoreMenu',
   'roomSettings',
+  'roomIdentity',
   'profileSettings',
   'notifications',
 ] as const;
@@ -99,3 +107,4 @@ export * from './backgrounds.ts';
 export * from './rtc.ts';
 export * from './media-quality.ts';
 export * from './room-media.ts';
+export { youtubeContentId } from './media-identity.ts';

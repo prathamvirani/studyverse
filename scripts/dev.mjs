@@ -78,7 +78,7 @@ const values = Object.fromEntries(
     .map((line) => line.split('=')),
 );
 let additions = '';
-for (const key of ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET']) {
+for (const key of ['LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 'ROOM_INVITE_ENCRYPTION_KEY']) {
   if (!values[key]) {
     values[key] = randomBytes(32).toString('hex');
     additions += `${key}=${values[key]}\n`;

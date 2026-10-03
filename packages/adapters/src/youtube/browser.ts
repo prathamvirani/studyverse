@@ -7,8 +7,10 @@ interface YouTubePlayer {
   seekTo(position: number, allowSeekAhead: boolean): void;
   setPlaybackRate(rate: number): void;
   getAvailablePlaybackRates(): number[] | undefined;
+  getPlaybackRate?(): number;
   setVolume(volume: number): void;
   getCurrentTime(): number;
+  getDuration?(): number;
   getPlayerState(): number;
   destroy(): void;
 }
@@ -63,16 +65,16 @@ function loadApi(): Promise<YouTubeApi> {
   return loading;
 }
 export const youtubeProvider: SharedVideoProvider = {
-  async mount(host, events, videoId) {
+  async mount(host, events, videoId, options) {
     const api = await loadApi();
-    if (!host.isConnected) throw new Error('Player closed.');
+    if (!host.isConnected || options?.signal?.aborted) throw new Error('Player closed.');
     const iframe = document.createElement('iframe');
     if (crossOriginIsolated && !('credentialless' in iframe))
       throw new Error(
         'This browser cannot isolate the YouTube embed. Use a browser with credentialless iframe support.',
       );
     iframe.setAttribute('credentialless', '');
-    iframe.title = 'Room YouTube player';
+    iframe.title = options?.title ?? 'Room YouTube player';
     iframe.src =
       'https://www.youtube.com/embed/' +
       youtubeIdSchema.parse(videoId) +
@@ -89,8 +91,14 @@ export const youtubeProvider: SharedVideoProvider = {
     iframe.style.minHeight = '200px';
     host.append(iframe);
     let player: YouTubePlayer | undefined;
+    let expectedPlayback: boolean | undefined;
+    let cancelReady: (() => void) | undefined;
     try {
       await new Promise<void>((resolve, reject) => {
+        const aborted = () => {
+          clearTimeout(timeout);
+          reject(new Error('Player closed.'));
+        };
         const timeout = setTimeout(
           () =>
             reject(
@@ -98,14 +106,24 @@ export const youtubeProvider: SharedVideoProvider = {
             ),
           15000,
         );
+        options?.signal?.addEventListener('abort', aborted, { once: true });
+        cancelReady = () => {
+          clearTimeout(timeout);
+          options?.signal?.removeEventListener('abort', aborted);
+        };
         player = new api.Player(iframe, {
           events: {
             onReady: () => {
-              clearTimeout(timeout);
+              cancelReady?.();
               resolve();
             },
             onStateChange: (e) => {
               if (e.data === 0) events.ended();
+              if ([1, 2].includes(e.data)) {
+                const playing = e.data === 1;
+                if (playing === expectedPlayback) expectedPlayback = undefined;
+                else events.playback?.(playing, player?.getCurrentTime() ?? 0);
+              }
             },
             onAutoplayBlocked: events.blocked,
             onError: (e) => {
@@ -125,8 +143,14 @@ export const youtubeProvider: SharedVideoProvider = {
       const p = player!;
       const adapter: SharedVideoPlayer = {
         cue: (id, start) => p.cueVideoById(youtubeIdSchema.parse(id), start),
-        play: () => p.playVideo(),
-        pause: () => p.pauseVideo(),
+        play: () => {
+          expectedPlayback = true;
+          p.playVideo();
+        },
+        pause: () => {
+          expectedPlayback = false;
+          p.pauseVideo();
+        },
         seek: (position) => p.seekTo(position, true),
         rate: (value) => {
           if ((p.getAvailablePlaybackRates() ?? []).includes(value)) p.setPlaybackRate(value);
@@ -134,6 +158,9 @@ export const youtubeProvider: SharedVideoProvider = {
         },
         volume: (value) => p.setVolume(Math.max(0, Math.min(100, value * 100))),
         position: () => p.getCurrentTime() || 0,
+        duration: () => p.getDuration?.() || 0,
+        rates: () => p.getAvailablePlaybackRates() ?? [1],
+        playbackRate: () => p.getPlaybackRate?.() ?? 1,
         playing: () => p.getPlayerState() === 1,
         buffering: () => p.getPlayerState() === 3,
         destroy: () => {
@@ -143,6 +170,7 @@ export const youtubeProvider: SharedVideoProvider = {
       };
       return adapter;
     } catch (e) {
+      cancelReady?.();
       player?.destroy();
       iframe.remove();
       throw e;

@@ -1,0 +1,297 @@
+{
+  "date": "2026-10-02",
+  "phase": "MID-04A",
+  "status": "COMPLETE — AWAITING_REVIEW",
+  "ownerAccepted": false,
+  "mid05Started": false,
+  "functionalBlockersInVerifiedScope": [],
+  "deferredNonBlockingPolish": [
+    "Existing dock labels are tightly spaced at 390px; controls remain selectable.",
+    "More menu icon-to-label spacing is tighter than global context rows.",
+    "Long friend invite-room names can wrap to two lines within the usable bounded select."
+  ],
+  "unit": {
+    "passed": 229,
+    "total": 229,
+    "files": 36
+  },
+  "focusedGeometryUnit": {
+    "passed": 18,
+    "total": 18,
+    "files": 2
+  },
+  "focusedBrowser": {
+    "distinctScenariosWithPassingEvidence": 17,
+    "newFinalPolishScenarios": 7,
+    "compositeAfterScopedRepairs": true,
+    "geometryRepairSelection": {
+      "initialPassed": 9,
+      "initialTotal": 11,
+      "finalScopedPassed": 2,
+      "finalScopedDurationSeconds": 11.6
+    }
+  },
+  "relevantBrowserRegression": {
+    "fullRuns": 1,
+    "suites": 18,
+    "total": 76,
+    "fullRunPassed": 75,
+    "fullRunFailed": 1,
+    "skips": 0,
+    "retries": 0,
+    "durationMinutes": 11.6,
+    "scopedCorrection": {
+      "passed": 1,
+      "total": 1,
+      "durationSeconds": 16.9,
+      "caseDurationSeconds": 10.4,
+      "case": "Chat clamps height, scrolls history, preserves IME and exposes authorized icon actions",
+      "repair": "Wait for the existing Send message button to be enabled before pressing Enter during rapid sends.",
+      "productSourceChangedForFailure": false
+    },
+    "distinctScenariosWithPassingEvidence": 76,
+    "cleanFullRun": false,
+    "retainedFailureTrace": ".local/validation/mid04a-final-polish/regression-chat-trace.zip",
+    "excludedStandaloneSuites": [
+      "rtc.spec.ts",
+      "rtc-live.spec.ts",
+      "rtc-quality.spec.ts",
+      "rtc-sfu.spec.ts"
+    ],
+    "heavyServiceSuitesRerun": false
+  },
+  "checks": {
+    "packageAndNuxtTypecheck": "passed",
+    "lintAndFeatureBoundaries": "passed",
+    "contracts": "passed",
+    "sourceSecurity": "passed",
+    "secretsScan": "passed",
+    "productionWebBuild": "passed",
+    "ownedFileFormatting": "passed",
+    "gitWhitespace": "passed"
+  },
+  "development": {
+    "services": {
+      "onlyWebContainerReplaced": true,
+      "changedContainerServices": ["web"],
+      "retainedContainerServices": ["api", "livekit", "postgres", "proxy", "redis"],
+      "allRunning": true,
+      "allConfiguredHealthChecksHealthy": true
+    },
+    "httpsSmoke": {
+      "webStatus": 200,
+      "readyStatus": 200,
+      "readyBody": {
+        "status": "ok"
+      },
+      "providersStatus": 200
+    },
+    "tablesChecked": 22,
+    "allDataCountsFullRowDigestsAndColumnsUnchanged": true,
+    "entireMigrationLedgerIncluded": true,
+    "resetPerformed": false,
+    "migrationPerformed": false
+  },
+  "preservation": {
+    "baselineFiles": 700,
+    "protectedBaselineFiles": 685,
+    "allProtectedBaselineHashesMatch": true,
+    "unexpectedChanges": [],
+    "changedBaselineFiles": [
+      "apps/web/app/components/FriendContext.vue",
+      "apps/web/app/components/RoomAddressEditor.vue",
+      "apps/web/app/components/StudyContextMenu.vue",
+      "apps/web/app/components/productivity/PomodoroPanel.vue",
+      "apps/web/app/components/productivity/TasksPanel.vue",
+      "apps/web/app/components/room/RoomShell.vue",
+      "apps/web/app/components/room/WorkspaceHost.vue",
+      "apps/web/app/lib/room-arrangement-layout.ts",
+      "docs/reports/MID_04A_OWNER_REVIEW_CORRECTIONS_AND_ROOM_STABILITY_REPORT.md",
+      "packages/core/src/workspace.ts",
+      "packages/ui/src/components/popover.ts",
+      "packages/ui/src/styles/primitives.css",
+      "tests/browser/companion-review.spec.ts",
+      "tests/unit/room-arrangement-layout.test.ts",
+      "tests/unit/room-workspace.test.ts"
+    ],
+    "historicalReferencesRestored": 111,
+    "historicalReferenceFiles": 279,
+    "previousReportContentPreserved": true,
+    "previousReportContentHashMatches": true,
+    "backendAndMigrationsChanged": false
+  },
+  "visualAudit": {
+    "requestedAreas": 11,
+    "screenshots": [
+      {
+        "file": "address-focused.png",
+        "sha256": "4c33a01632aeeaf28d0791bc0ba823e7921e5ab1fd5187517f4cd69fa8873775",
+        "bytes": 358178,
+        "width": 1280,
+        "height": 720,
+        "visuallyInspected": true
+      },
+      {
+        "file": "context-menu.png",
+        "sha256": "95a182f0963e786d58d3ad6f28a7db8c77a2315c12c88fe5e333c4961c61f342",
+        "bytes": 811485,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "disabled-context-menu.png",
+        "sha256": "95eb66589ab72fd68e19030ba6777422d784a898ac93e51d2d564b8b8609e2f0",
+        "bytes": 826736,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "friend-context-select.png",
+        "sha256": "78e923460c208d592219d73706cf035e2362739ad0472c324b5f816bb6f4ec00",
+        "bytes": 637447,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "friend-context.png",
+        "sha256": "829873a2287d843eb175e356bf1644f68978f96897ba12bdba6a02ca0a33cc03",
+        "bytes": 631567,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "headers-timer-1440.png",
+        "sha256": "354aa92e9759456d4d3cf3a7ace81891578fa83d8babc20846181937add68a26",
+        "bytes": 847117,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "headers-timer-390.png",
+        "sha256": "670477fe558a2b8baef5fdfb4ae91587ee8664620325ca87a0fa92433af0898e",
+        "bytes": 161294,
+        "width": 390,
+        "height": 844,
+        "visuallyInspected": true
+      },
+      {
+        "file": "identity-cedar-library.png",
+        "sha256": "700b4e2cd7a77e18e77a93dae4586dbaae38e512908f4e7584c13d8993abb3a6",
+        "bytes": 890029,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "identity-morning-studio.png",
+        "sha256": "79172b9e76cffb2f20ea5cc7f528755c15ebf3bd3d3ab347fcf7124e4637b763",
+        "bytes": 857607,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "identity-night-observatory.png",
+        "sha256": "95b9f9158f6332e576fa45f27475f2bf069a7b76d44d794db36cdc4f97d4bc9b",
+        "bytes": 598595,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "more-hover.png",
+        "sha256": "cea0e7fbb0db3b76e6ef62a496c49754eb9eec727cd62711d26b22e255eac7aa",
+        "bytes": 837382,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "snap-preview-initial.png",
+        "sha256": "39490618f925cdc4caaec169cbca5dc6ac4d2391ab95b1ea21d891ea3c38ddd0",
+        "bytes": 871181,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "snap-preview-moved-header-rail-dock.png",
+        "sha256": "0163d1be29a835d83dbbd9a3fc4c10cee059a39e97b44168ee963aa067324c1a",
+        "bytes": 887355,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "snap-preview-workspace-top-right.png",
+        "sha256": "99c4fa0d81ca5d2593928ce1fa9675c7ab3cc12de67044c39b9d4ad1ee44c787",
+        "bytes": 869354,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "tasks-focused-row.png",
+        "sha256": "354aa92e9759456d4d3cf3a7ace81891578fa83d8babc20846181937add68a26",
+        "bytes": 847117,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "top-rail-and-free-card.png",
+        "sha256": "31c15bee7d09cf7ea940143e88a679b2fea5ccb3f8accc0cb29be0e6b2097054",
+        "bytes": 887598,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "top-rail-preview.png",
+        "sha256": "04fa471e526ab4d8b120b9da5f53ed74caad9274f1ac3be94469841c80ef1bcb",
+        "bytes": 885602,
+        "width": 1440,
+        "height": 1000,
+        "visuallyInspected": true
+      },
+      {
+        "file": "touch-task-selected.png",
+        "sha256": "3774397f22dd90129e0e5d778180cf7b6e156481f2f9c0104b92a9e6c0d46f0d",
+        "bytes": 160799,
+        "width": 390,
+        "height": 844,
+        "visuallyInspected": true
+      }
+    ],
+    "waitsForFontsAndFiniteTransitions": true
+  },
+  "validationBoundary": "Local Chromium and deterministic fixtures, including zoom-equivalent layout-size reflow. Other browsers, physical devices, actual browser zoom and real-provider playback are not certified. No unrelated polish or standalone SFU/service suite rerun.",
+  "localLogHashes": {
+    "unit.log": "cbad17ae5e71d01e46965785826a8148aacf90004a5c25949b24e50878e333d6",
+    "geometry.log": "461320d669096fecc12f24e4bfaa7dab00680a32b506eef18760212c31f89dc6",
+    "focused-new.log": "60739f4712934cb3830bef865b6e8a181b0366b238356752715d60587e0fb637",
+    "focused-stable.log": "47ce789ca0f60f80c4393694ecf0145b54ad18967677d388b8b49703d2a5d123",
+    "focused-geometry-repair.log": "b292fb105d2c43d1c9fa0cbb0cd1c7d030987ed8c151f71025322c453efb7dee",
+    "focused-final.log": "3d88d4bc565b9c8641bf80f09c190e4c150321f9ecbedfac9bf7f1274e43120d",
+    "browser-regression.log": "f8a272a436c1020b20771137df9661d691124b444b0e1a4214a3630f857d760e",
+    "regression-correction.log": "d38118af09d26f37ee7642f0d81dab44e81e3e3b0b8c9907608c3a8dc613e2ac",
+    "typecheck.log": "b711c5ae509a9f85b5a2c9f754d4263d644897a7e5acd363bb61bfb5d63ee2af",
+    "lint.log": "99f19cf096a3bcc4b9ad36fbb3923342340aefd4b4273c0d84d80ba7adcce846",
+    "contracts.log": "882f92d907ef25852daad30611d7241f95c59c7e1e6fe3050b01f553045b4a06",
+    "security-source.log": "faf4a2401194cef0c4c72f372035bae4eb13b00c0c715c1067273cab0483c2f4",
+    "security-secrets.log": "78d9ffa8c5f1f7948a69dfbb5e1df24e99b8534321525653d0f13faed434fae1",
+    "build.log": "681e0ccacbfb3cfc2a85fc90641504d6faf80c9f2831443c2306bbb33cb74b43",
+    "format.log": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+    "diff-check.log": "a3884f8c838e4f19bacd0afad786eff40cbe3de77f623eb4f29a0cd51f144c54",
+    "final-format.log": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+    "final-diff-check.log": "a3884f8c838e4f19bacd0afad786eff40cbe3de77f623eb4f29a0cd51f144c54",
+    "web-refresh.log": "63d680797b32da6bfa44c629ace3b497769d23f98882ff3eed7aaf99471c7b20",
+    "web-start.log": "5f6f356aeaa6c0041d5d65b5096c5d40008f75ce1a33d38c243e29878a3b7aad",
+    "dev-data-preservation.log": "b727a0218efaf72fa764882ac0af0486e0ac4f79f86c0ec0c71542ede66db8b7"
+  }
+}

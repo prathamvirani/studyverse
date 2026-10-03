@@ -5,6 +5,8 @@ import { Sessions, SESSION_COOKIE, AppError } from '@study/core/server';
 import { createServer } from '../../apps/api/src/server.ts';
 import { readConfig } from '../../apps/api/src/config.ts';
 import { MemoryLimiter, MemorySessions } from '../fixtures/memory.ts';
+import { accountDeletedSchema } from '@study/contracts';
+import type { EventPublisher } from '@study/feature-sdk';
 import type { MediaAuthority } from '@study/feature-sdk';
 const roomId = randomUUID(),
   otherRoom = randomUUID(),
@@ -37,13 +39,27 @@ const request = (path: string, payload: unknown) =>
     headers: headers(),
     payload: JSON.stringify(payload),
   });
-async function start() {
+let accountEvents: EventPublisher | undefined;
+async function start(lifecycle = false) {
   server = await createServer({
     config,
     sessions,
     limiter: new MemoryLimiter(),
     modules: [
+      ...(lifecycle
+        ? [
+            {
+              id: 'identity',
+              version: '1.0.0',
+              events: [{ id: 'identity.deleted', schema: accountDeletedSchema }],
+              start: async (c: import('@study/feature-sdk').LifecycleContext) => {
+                accountEvents = c.events;
+              },
+            },
+          ]
+        : []),
       rtcModule({
+        accountEvents: lifecycle,
         authority,
         people: { person: async (id) => ({ id, name: 'Authorized room publisher' }) },
         blocked: async (a, b) => a !== b && blocked,
@@ -214,5 +230,21 @@ it('media directory resolves only server leases and blocks remove both active co
   await vi.waitFor(
     () => expect(vi.mocked(authority.remove).mock.calls.length).toBeGreaterThan(count),
     { timeout: 4000 },
+  );
+});
+
+it('account erasure immediately retires grants through the identity lifecycle event', async () => {
+  await server.app.close();
+  await start(true);
+  const a = await post('join', { roomId });
+  expect(a.statusCode).toBe(200);
+  await sessions.revoke(issued.session.id);
+  await accountEvents!.emit(
+    { id: 'identity.deleted', schema: accountDeletedSchema },
+    { userId: subject },
+  );
+  expect(authority.remove).toHaveBeenCalledWith(roomId, a.json().connectionId);
+  expect((await post('renew', { roomId, connectionId: a.json().connectionId })).statusCode).toBe(
+    401,
   );
 });

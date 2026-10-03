@@ -14,6 +14,16 @@ import { createQualityModel } from './rtc-quality.ts';
 import MediaQuality from '../components/room/MediaQuality.vue';
 import type { createApiClient } from '../lib/api-client.ts';
 import type { RoomComposition } from './composition.ts';
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  ScreenShare,
+  AlertCircle,
+  LoaderCircle,
+  StudySelect,
+} from '@study/ui';
 
 /** Each track has one DOM element. Moving that element also avoids transient Vue mount overlap. */
 export function mediaRenderer(
@@ -27,6 +37,7 @@ export function mediaRenderer(
       const host = ref<HTMLElement>();
       let current: string | undefined;
       let intersecting = true;
+      let visibilityDocument: Document | undefined;
       let resize: ResizeObserver | undefined, intersection: IntersectionObserver | undefined;
       function receiveVisible() {
         const t = track();
@@ -34,13 +45,25 @@ export function mediaRenderer(
         const size = host.value.getBoundingClientRect();
         const visible =
           t.source === 'microphone' ||
-          (!document.hidden && intersecting && size.width > 0 && size.height > 0);
+          (!host.value.ownerDocument.hidden &&
+            (host.value.ownerDocument !== document || intersecting) &&
+            size.width > 0 &&
+            size.height > 0);
         provider.receive(t.id, visible ? surface : 'hidden', {
           width: size.width,
           height: size.height,
         });
       }
       let dispose: (() => void) | undefined;
+      function presentationChanged() {
+        const owner = host.value?.ownerDocument;
+        if (owner && visibilityDocument !== owner) {
+          visibilityDocument?.removeEventListener('visibilitychange', receiveVisible);
+          visibilityDocument = owner;
+          owner.addEventListener('visibilitychange', receiveVisible);
+        }
+        receiveVisible();
+      }
       function render() {
         const t = track();
         if (current && current !== t?.id) {
@@ -89,13 +112,15 @@ export function mediaRenderer(
           receiveVisible();
         });
         if (host.value) intersection.observe(host.value);
-        document.addEventListener('visibilitychange', receiveVisible);
+        host.value?.addEventListener('room-presentation-changed', presentationChanged);
+        presentationChanged();
       });
       onUnmounted(() => {
         dispose?.();
         resize?.disconnect();
         intersection?.disconnect();
-        document.removeEventListener('visibilitychange', receiveVisible);
+        visibilityDocument?.removeEventListener('visibilitychange', receiveVisible);
+        host.value?.removeEventListener('room-presentation-changed', presentationChanged);
         if (current) {
           const el = elements.get(current);
           if (el && el.parentElement === host.value) {
@@ -109,7 +134,13 @@ export function mediaRenderer(
         track();
         render();
       });
-      return () => h('div', { ref: host, class: 'rtc-renderer', style: 'width:100%;height:100%' });
+      return () =>
+        h('div', {
+          ref: host,
+          class: 'rtc-renderer',
+          'data-media-host': true,
+          style: 'width:100%;height:100%',
+        });
     },
   });
 }
@@ -209,6 +240,12 @@ export function registerRtc(
       const t = trackFor(p.id);
       p.camera = !!t;
       p.expanded = !!t && expanded.has(t.id);
+      const audio = session.state.snapshot.tracks.filter(
+        (a) =>
+          a.source === 'microphone' && a.userId === (p.id === 'self' ? userId : p.id) && !a.muted,
+      );
+      p.microphone = audio.length > 0;
+      p.speaking = audio.some((a) => (a.audioLevel ?? 0) > 0.02);
     }
     for (const item of shell.workspace.values())
       if (
@@ -296,7 +333,47 @@ export function registerRtc(
               'workspace',
               elements,
             );
-            return () => h(renderer);
+            return () => {
+              void revision.value;
+              const track = session.state.snapshot.tracks.find(
+                (t) => t.id === props.instance.resourceKey,
+              );
+              const participant = shell.participants.find(
+                (p) => p.id === (track?.local ? 'self' : track?.userId),
+              );
+              return h(
+                'div',
+                {
+                  class: 'participant-video-surface',
+                  style: 'position:relative;width:100%;height:100%',
+                },
+                [
+                  h(renderer),
+                  ...(participant
+                    ? [
+                        h(
+                          'div',
+                          {
+                            class: 'participant-video-caption',
+                            style:
+                              'position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:#172b2fcc;color:white;font-size:12px',
+                            'data-speaking': !!participant.speaking,
+                          },
+                          [
+                            h('span', participant.name),
+                            !participant.microphone
+                              ? h(MicOff, { size: 14, 'aria-label': 'Microphone off' })
+                              : null,
+                            participant.speaking
+                              ? h('span', { 'aria-label': 'Speaking' }, '●')
+                              : null,
+                          ],
+                        ),
+                      ]
+                    : []),
+                ],
+              );
+            };
           },
         }),
     });
@@ -309,7 +386,13 @@ export function registerRtc(
   }
   const register = (
     id: string,
-    point: 'bottomDock' | 'participantContextMenu' | 'participantBadge' | 'roomMoreMenu' | 'topBar',
+    point:
+      | 'bottomDock'
+      | 'participantContextMenu'
+      | 'participantBadge'
+      | 'roomMoreMenu'
+      | 'roomSettings'
+      | 'topBar',
     order: number,
     label: string,
     component: Component,
@@ -324,12 +407,32 @@ export function registerRtc(
       defineComponent({
         setup: () => () => {
           void revision.value;
-          const active = session.state.snapshot.tracks.some((t) => t.local && t.source === source);
+          const tracks = session.state.snapshot.tracks.filter(
+            (t) => t.local && t.source === source,
+          );
+          const active = tracks.some((t) => !t.muted);
+          const speaking =
+            source === 'microphone' && tracks.some((t) => !t.muted && (t.audioLevel ?? 0) > 0.02);
+          const starting = session.state.busy.has(source);
+          const error = session.state.sourceErrors[source];
           return h(
             'button',
             {
               'aria-label': `${label} ${active ? 'on' : 'off'}`,
               'aria-pressed': active,
+              title:
+                error ||
+                `${label} ${starting ? 'starting' : speaking ? 'speaking' : active ? 'on' : 'off'}`,
+              'aria-description': error || (speaking ? 'Speaking' : undefined),
+              'data-state': error
+                ? 'error'
+                : starting
+                  ? 'starting'
+                  : speaking
+                    ? 'speaking'
+                    : active
+                      ? 'active'
+                      : 'inactive',
               disabled:
                 session.state.busy.has(source) ||
                 (quality && (!quality.state.ready || quality.state.busy)),
@@ -337,9 +440,20 @@ export function registerRtc(
             },
             [
               h(
-                'span',
-                { class: 'dock-icon', 'aria-hidden': 'true' },
-                { microphone: '♩', camera: '▣', screen: '▱' }[source],
+                error
+                  ? AlertCircle
+                  : starting
+                    ? LoaderCircle
+                    : source === 'microphone'
+                      ? active
+                        ? Mic
+                        : MicOff
+                      : source === 'camera'
+                        ? active
+                          ? Video
+                          : VideoOff
+                        : ScreenShare,
+                { size: 21, 'aria-hidden': true },
               ),
               h('small', label),
             ],
@@ -363,13 +477,14 @@ export function registerRtc(
             t.userId === (props.participantId === 'self' ? userId : props.participantId) &&
             !t.muted,
         );
-        if (!tracks.length) return h('button', { disabled: true }, 'Expand camera');
+        if (!tracks.length) return h('small', 'Camera is off');
         return h(
           'div',
           tracks.map((t, index) =>
             h(
               'button',
               {
+                class: 'ui-menu-row camera-expand',
                 disabled: expanded.has(t.id),
                 onClick: () => {
                   const tile = shell.workspace.open('rtc.camera', t.id);
@@ -443,84 +558,99 @@ export function registerRtc(
   );
   register(
     'rtc.settings',
-    'roomMoreMenu',
+    'roomSettings',
     8,
     'Devices and basic media',
     defineComponent({
-      setup: () => () => {
-        void revision.value;
-        return h('div', [
-          h('p', `Media: ${session.state.snapshot.connection}`),
-          h('button', { onClick: () => void session.connect() }, 'Connect media'),
-          ...(['microphone', 'camera'] as const).map((source) =>
-            h('label', [
-              `${source} device`,
-              h(
-                'select',
-                {
-                  'aria-label': `${source} device`,
-                  onChange: (e: Event) =>
-                    void session.switchDevice(source, (e.target as HTMLSelectElement).value),
-                },
-                session.state.devices
+      props: { category: { type: String, default: 'Media & Devices' } },
+      setup: (props) => {
+        const devices = ref({ microphone: '', camera: '' });
+        return () => {
+          void revision.value;
+          if (
+            props.category === 'Quality' ||
+            props.category === 'Audio' ||
+            props.category === 'Camera' ||
+            props.category === 'Diagnostics'
+          )
+            return quality
+              ? h(MediaQuality, {
+                  model: quality,
+                  tracks: session.state.snapshot.tracks,
+                  section: props.category,
+                })
+              : h('p', 'Advanced media preferences are unavailable.');
+          if (props.category !== 'Media & Devices') return null;
+          return h('div', [
+            h('p', `Media: ${session.state.snapshot.connection}`),
+            h('button', { onClick: () => void session.connect() }, 'Connect media'),
+            ...(['microphone', 'camera'] as const).map((source) =>
+              h(StudySelect, {
+                label: `${source} device`,
+                modelValue: devices.value[source],
+                options: session.state.devices
                   .filter((d) => d.kind === (source === 'camera' ? 'videoinput' : 'audioinput'))
-                  .map((d) => h('option', { value: d.deviceId }, d.label || 'Device')),
-              ),
-            ]),
-          ),
-          h('button', { onClick: () => void session.refreshDevices() }, 'Refresh devices'),
-          ...(quality
-            ? [h(MediaQuality, { model: quality, tracks: session.state.snapshot.tracks })]
-            : [
-                h('label', [
-                  'Voice preset',
-                  h(
-                    'select',
-                    {
-                      'aria-label': 'Voice preset',
-                      value: session.state.voice,
-                      disabled:
-                        session.state.busy.has('microphone') ||
-                        session.state.snapshot.tracks.some(
-                          (t) => t.local && t.source === 'microphone',
-                        ),
-                      onChange: (e: Event) =>
-                        session.voice(
-                          (e.target as HTMLSelectElement).value === 'high' ? 'high' : 'standard',
-                        ),
-                    },
-                    [
-                      h('option', { value: 'standard' }, 'Standard'),
-                      h('option', { value: 'high' }, 'High'),
+                  .map((d) => ({ value: d.deviceId, label: d.label || 'Device' })),
+                'onUpdate:modelValue': async (value: string) => {
+                  await session.switchDevice(source, value);
+                  devices.value[source] = value;
+                },
+              }),
+            ),
+            h('button', { onClick: () => void session.refreshDevices() }, 'Refresh devices'),
+            ...(quality
+              ? []
+              : [
+                  h(StudySelect, {
+                    label: 'Voice preset',
+                    modelValue: session.state.voice,
+                    disabled:
+                      session.state.busy.has('microphone') ||
+                      session.state.snapshot.tracks.some(
+                        (t) => t.local && t.source === 'microphone',
+                      ),
+                    options: [
+                      { value: 'standard', label: 'Standard' },
+                      { value: 'high', label: 'High' },
                     ],
+                    'onUpdate:modelValue': (value: string) =>
+                      session.voice(value === 'high' ? 'high' : 'standard'),
+                  }),
+                  h(
+                    'small',
+                    'Choose before activating the microphone. High uses less processing; echo cancellation remains on.',
                   ),
                 ]),
-                h(
-                  'small',
-                  'Choose before activating the microphone. High uses less processing; echo cancellation remains on.',
-                ),
-              ]),
-          h('button', { onClick: () => void session.mute(true) }, 'Mute microphone'),
-          h('button', { onClick: () => void session.mute(false) }, 'Unmute microphone'),
+            h('button', { onClick: () => void session.mute(true) }, 'Mute microphone'),
+            h('button', { onClick: () => void session.mute(false) }, 'Unmute microphone'),
 
-          h(
-            'small',
-            'Sharing media makes you visible to authorized people in this room. Friends-list privacy stays unchanged.',
-          ),
-          ...session.state.snapshot.tracks
-            .filter((t) => t.local)
-            .map((t) =>
-              h(
-                'p',
-                `${t.source}: requested ${t.requested.width ?? 'audio'} · actual ${t.actual.width ?? 'unknown'}`,
-              ),
+            h(
+              'small',
+              'Sharing media makes you visible to authorized people in this room. Friends-list privacy stays unchanged.',
             ),
-        ]);
+          ]);
+        };
       },
     }),
   );
   const deviceChanged = () => void session.refreshDevices();
   navigator.mediaDevices?.addEventListener('devicechange', deviceChanged);
+  shell.state.preparePopouts = () => {
+    if (disposed) return;
+    for (const track of session.state.snapshot.tracks) {
+      const element = elements.get(track.id);
+      if (
+        track.source !== 'camera' ||
+        track.muted ||
+        !element?.isConnected ||
+        !element.getBoundingClientRect().width
+      )
+        continue;
+      const tile = shell.workspace.open('rtc.camera', track.id);
+      shell.workspace.update(tile.id, { ...tile.layout, minimized: false, fullscreen: false });
+    }
+    shell.state.refresh();
+  };
   // Receive-only connection is asynchronous; it never acquires local devices or blocks entry.
   // Disabled/unconfigured media stays quiet until a deliberate control action.
   void session.connect(true);
@@ -529,8 +659,19 @@ export function registerRtc(
   return {
     cameraRenderer,
     project,
+    voiceActivity() {
+      const snapshot = session.state.snapshot;
+      const tracks = snapshot.tracks.filter(
+        (t) => t.source === 'microphone' && !t.muted && t.audioLevel !== undefined,
+      );
+      return {
+        available: snapshot.connection === 'connected' && tracks.length > 0,
+        speaking: tracks.some((t) => (t.audioLevel ?? 0) > 0.02),
+      };
+    },
     async dispose() {
       disposed = true;
+      shell.state.preparePopouts = () => {};
       clearInterval(audienceTimer);
       audience = [];
       navigator.mediaDevices?.removeEventListener('devicechange', deviceChanged);

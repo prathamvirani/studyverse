@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { okSchema, providerSchema } from '@study/contracts';
+import { oauthFinishResultSchema, providerSchema, safeReturnTo } from '@study/contracts';
 const route = useRoute(),
   { api, load } = useAccount();
 const error = ref('');
@@ -15,13 +15,13 @@ onMounted(async () => {
     return;
   }
   try {
-    await api.authentication('/api/v1/account/finish', okSchema, {
+    const result = await api.authentication('/api/v1/account/finish', oauthFinishResultSchema, {
       provider: provider.data,
       state: state[0],
       code: code[0],
     });
     await load();
-    await navigateTo('/account', { replace: true });
+    await navigateTo(safeReturnTo(result.returnTo), { replace: true });
   } catch {
     error.value =
       'Unable to complete sign-in. The link may have expired, or the identity may belong to another account. Please start again.';
@@ -29,7 +29,7 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <section class="hero">
+  <section class="callback-card card">
     <p class="eyebrow">Welcome back</p>
     <h1>{{ error ? 'Let’s try again.' : 'Signing you in…' }}</h1>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -37,3 +37,10 @@ onMounted(async () => {
     <NuxtLink v-if="error" class="button" to="/">Back to Home</NuxtLink>
   </section>
 </template>
+
+<style scoped>
+.callback-card {
+  max-width: 560px;
+  margin: 12dvh auto;
+}
+</style>

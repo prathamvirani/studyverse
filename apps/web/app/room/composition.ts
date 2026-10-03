@@ -1,6 +1,7 @@
 import { defineComponent, h, reactive } from 'vue';
 import { layoutSchema } from '@study/contracts';
 import { TileRegistry, UiRegistry, Workspace } from '@study/core/browser';
+import { Ellipsis } from '@study/ui';
 
 export interface Participant {
   id: string;
@@ -9,6 +10,8 @@ export interface Participant {
   status: string;
   camera: boolean;
   expanded: boolean;
+  microphone?: boolean;
+  speaking?: boolean;
 }
 
 /** Shared room hosts and controls; features register their own surfaces at composition time. */
@@ -26,7 +29,13 @@ export function createRoomComposition(displayName: string, invite: () => void) {
       expanded: false,
     },
   ]);
-  const state = reactive({ notice: '', more: false, refresh: () => {} });
+  const state = reactive({
+    notice: '',
+    more: false,
+    refresh: () => {},
+    closeSettings: () => {},
+    preparePopouts: () => {},
+  });
   // This tile type is persisted in existing device layouts; keep its identifier stable.
   const guideType = 'demo.sandbox';
   tiles.register(guideType, {
@@ -73,7 +82,7 @@ export function createRoomComposition(displayName: string, invite: () => void) {
           state.more = !state.more;
         },
       },
-      [h('span', { 'aria-hidden': 'true', class: 'dock-icon' }, '•••'), h('small', 'More')],
+      [h(Ellipsis, { 'aria-hidden': true, size: 21 }), h('small', 'More')],
     ),
   );
   register('room.workspace-guide', 'roomMoreMenu', 10, 'Workspace guide', () =>
@@ -86,6 +95,7 @@ export function createRoomComposition(displayName: string, invite: () => void) {
           workspace.focus(tile.id);
           state.refresh();
           state.more = false;
+          state.closeSettings();
         },
       },
       'Open workspace guide',

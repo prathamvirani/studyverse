@@ -29,6 +29,7 @@ try {
     new RedisEphemeralStore(redis),
     new PostgresSessionStore(db),
     featureEnabled(process.env, 'SOCIAL_ENABLED'),
+    true,
   );
   const { app } = await createServer({
     config,
@@ -36,12 +37,12 @@ try {
     limiter: new RedisRateLimiter(redis),
     observer,
     modules: [
-      ...rtcModules(db, new PostgresSessionStore(db), process.env),
+      ...rtcModules(db, new PostgresSessionStore(db), process.env, true),
       ...productivityModules(db, process.env),
       ...backgroundsModules(db, process.env),
-      ...identityModules(db, process.env, config.APP_ORIGIN, socialDirectory(db)),
+      ...identityModules(db, process.env, config.APP_ORIGIN, socialDirectory(db), social.presence),
       ...social.modules,
-      ...roomMediaModules(db, social.occupancy, process.env),
+      ...roomMediaModules(db, social.occupancy, process.env, true),
     ],
     ready: async (signal) => {
       try {

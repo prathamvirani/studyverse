@@ -32,6 +32,8 @@ export interface MediaTrack {
   source: MediaSource;
   local: boolean;
   muted: boolean;
+  /** Provider-measured audio activity, normalized to 0..1; absent when unavailable. */
+  audioLevel?: number;
   stream: MediaStream | null;
   requested: MediaProfile;
   actual: MediaProfile;

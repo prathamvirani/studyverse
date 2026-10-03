@@ -26,10 +26,18 @@ export function createMediaSession(
   const state: {
     snapshot: MediaSnapshot;
     error: string;
+    sourceErrors: Partial<Record<MediaSource, string>>;
     busy: Set<MediaSource>;
     devices: MediaDeviceInfo[];
     voice: 'standard' | 'high';
-  } = { snapshot: provider.snapshot(), error: '', busy: new Set(), devices: [], voice: 'standard' };
+  } = {
+    snapshot: provider.snapshot(),
+    error: '',
+    sourceErrors: {},
+    busy: new Set(),
+    devices: [],
+    voice: 'standard',
+  };
   let credential: MediaCredential | null = null,
     generation = 0,
     disposed = false;
@@ -114,11 +122,13 @@ export function createMediaSession(
       if (disposed || state.busy.has(source)) return;
       state.busy.add(source);
       state.error = '';
+      delete state.sourceErrors[source];
       changed();
       const epoch = generation;
       try {
         const active = state.snapshot.tracks.find((t) => t.local && t.source === source);
-        if (active) await provider.unpublish(source);
+        if (active?.muted) await provider.mute(source, false);
+        else if (active) await provider.unpublish(source);
         else if (source === 'screen' && state.snapshot.connection !== 'connected') {
           await connect();
           if (!disposed && epoch === generation)
@@ -135,6 +145,7 @@ export function createMediaSession(
         await refreshDevices();
       } catch (e) {
         state.error = mediaError(e);
+        state.sourceErrors[source] = state.error;
       } finally {
         state.busy.delete(source);
         changed();
@@ -151,12 +162,14 @@ export function createMediaSession(
     async switchDevice(source: 'microphone' | 'camera', id: string) {
       if (disposed || state.busy.has(source)) return;
       state.busy.add(source);
+      delete state.sourceErrors[source];
       changed();
       try {
         await provider.switchDevice(source, id);
         await refreshDevices();
       } catch (e) {
         state.error = mediaError(e);
+        state.sourceErrors[source] = state.error;
       } finally {
         state.busy.delete(source);
         changed();

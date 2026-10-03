@@ -162,6 +162,7 @@ beforeEach(async () => {
       ...backgroundsModules(db),
       identityModule({ db, directory, providers, fail }),
       roomsModule({
+        inviteKey: 'ab'.repeat(32),
         db,
         accountExists: identityAccounts(db).exists,
         fail,

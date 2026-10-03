@@ -16,11 +16,43 @@ export const socialPrivacySchema = z.strictObject({
   invites: z.boolean(),
 });
 export const socialTargetSchema = z.strictObject({ targetId: z.uuid() });
-export const socialPersonSchema = z.strictObject({ id: z.uuid(), name: z.string().max(80) });
+export const socialPersonSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().max(80),
+  username: z.string().max(24).nullable().optional(),
+});
+export const friendSearchInputSchema = z.strictObject({
+  username: z
+    .string()
+    .min(3)
+    .max(24)
+    .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/),
+});
+export const friendSearchSchema = z.strictObject({
+  person: z
+    .strictObject({
+      username: z.string().max(24),
+      name: z.string().max(80),
+      state: z.enum(['friends', 'incoming', 'outgoing', 'none']),
+    })
+    .nullable(),
+});
+export const peopleSearchInputSchema = z.strictObject({
+  query: z.string().trim().min(3).max(80),
+  scope: z.enum(['global', 'met']).default('global'),
+});
+export const peopleSearchSchema = z.strictObject({
+  people: z.array(friendSearchSchema.shape.person.unwrap()).max(20),
+});
 export const presenceViewSchema = socialPersonSchema.extend({
   status: presenceStatusSchema.nullable(),
   room: z
-    .strictObject({ id: z.uuid(), name: z.string().max(100), joinable: z.boolean() })
+    .strictObject({
+      id: z.uuid(),
+      name: z.string().max(100),
+      joinable: z.boolean(),
+      address: z.string().max(40).optional(),
+    })
     .nullable(),
 });
 export const friendsSnapshotSchema = z.strictObject({

@@ -68,6 +68,6 @@ export default defineConfig({
     url: 'https://localhost:8449',
     ignoreHTTPSErrors: true,
     reuseExistingServer: false,
-    timeout: 30_000,
+    timeout: 120_000,
   },
 });

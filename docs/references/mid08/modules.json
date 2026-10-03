@@ -1,0 +1,24 @@
+{
+  "fonts": [
+    { "family": "Inter Variable", "weight": "100 900", "style": "normal" },
+    { "family": "Instrument Serif", "weight": "400", "style": "normal" },
+    { "family": "Instrument Serif", "weight": "400", "style": "italic" }
+  ],
+  "signedOutResources": {
+    "scriptCount": 23,
+    "scriptEncodedBytes": 450338,
+    "fontCount": 2,
+    "fontEncodedBytes": 70384
+  },
+  "image": {
+    "src": "https://localhost:8449/_ipx/f_webp&q_65&s_160x90/backgrounds/cedar-library-thumb.webp",
+    "srcset": "/_ipx/f_webp&q_65&s_160x90/backgrounds/cedar-library-thumb.webp 1x, /_ipx/f_webp&q_65&s_320x180/backgrounds/cedar-library-thumb.webp 2x",
+    "width": 160,
+    "height": 90
+  },
+  "optimizedBytes": 1916,
+  "originalBytes": 7772,
+  "embeddingSupported": true,
+  "errors": [],
+  "remoteFontOrIconRequests": []
+}

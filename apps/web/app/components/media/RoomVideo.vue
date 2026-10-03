@@ -2,9 +2,11 @@
 import type { SharedVideoProvider, SharedVideoPlayer } from '@study/feature-sdk';
 import { correctMediaDrift, effectiveMix, mediaPosition } from '@study/room-media/browser';
 import type { RoomMediaModel } from '../../room/room-media-model';
+import { useDocumentVisibility } from '@vueuse/core';
 const props = defineProps<{ model: RoomMediaModel; provider: SharedVideoProvider }>();
+const visibility = useDocumentVisibility();
 const host = ref<HTMLElement>(),
-  message = ref('Press Enable YouTube to connect to the provider.'),
+  message = ref(''),
   enabled = ref(false),
   loading = ref(false),
   observedPlaying = ref(false),
@@ -18,7 +20,7 @@ let player: SharedVideoPlayer | undefined,
 function sync() {
   const view = props.model.state.view;
   if (!player) return;
-  if (!view || document.hidden || suspended || !props.model.clockReady()) {
+  if (!view || visibility.value !== 'visible' || suspended || !props.model.clockReady()) {
     player.pause();
     observedPlaying.value = false;
     return;
@@ -36,7 +38,10 @@ function sync() {
       player.cue(id, mediaPosition(view.state, props.model.serverNow()));
       message.value = '';
     }
-    player.volume(effectiveMix(view.state.mix, props.model.state.local).music);
+    player.volume(
+      effectiveMix(props.model.state.previewMix ?? view.state.mix, props.model.state.local).music *
+        props.model.state.duckMusicGain,
+    );
     correctMediaDrift(
       player,
       view.state,
@@ -46,6 +51,11 @@ function sync() {
     version = view.version;
     observedPlaying.value = player.playing();
     observedPosition.value = player.position();
+    Object.assign(props.model.state.diagnostics, {
+      playing: observedPlaying.value,
+      position: observedPosition.value,
+      duration: player.duration?.() ?? 0,
+    });
   } catch {
     message.value = 'YouTube is unavailable. Retry or choose another video.';
     suspended = true;
@@ -62,7 +72,7 @@ async function enable() {
   const initialId =
     view?.state.current === null ? undefined : view?.state.queue[view?.state.current ?? -1];
   if (!initialId) {
-    message.value = 'Add a room video before enabling YouTube.';
+    message.value = 'Add a room video first.';
     return;
   }
   loading.value = true;
@@ -75,13 +85,21 @@ async function enable() {
           suspended = true;
         },
         blocked: () => {
-          message.value =
-            'Playback was blocked. Press Resume YouTube, or use the player Play button.';
+          message.value = 'Playback needs your permission. Press Play.';
           suspended = true;
         },
         ended: () => {
           message.value = 'Video ended. A room controller can select the next queue item.';
           suspended = true;
+        },
+        playback: (playing) => {
+          const current = props.model.state.view;
+          if (!current || playing === current.state.playing || props.model.state.busy) return;
+          if (current.canControl) void props.model.act({ type: playing ? 'play' : 'pause' });
+          else if (playing && !current.state.playing) {
+            player?.pause();
+            message.value = 'A room controller has paused playback.';
+          }
         },
       },
       initialId,
@@ -91,6 +109,7 @@ async function enable() {
       return;
     }
     player = result;
+    props.model.state.diagnostics.mounts++;
     enabled.value = true;
     message.value = '';
     sync();
@@ -101,7 +120,10 @@ async function enable() {
   }
 }
 watch(
-  () => props.model.state.view?.state.current,
+  () => {
+    const state = props.model.state.view?.state;
+    return state?.current === null ? null : state?.queue[state?.current ?? -1];
+  },
   () => {
     suspended = false;
     content = '';
@@ -115,14 +137,16 @@ watch(
   },
 );
 watch(() => props.model.state.local, sync, { deep: true });
+watch(() => props.model.state.previewMix, sync, { deep: true });
+watch(() => props.model.state.duckMusicGain, sync);
+watch(visibility, sync, { flush: 'sync' });
 onMounted(() => {
+  if (props.model.state.videoIntent) void enable();
   timer = setInterval(sync, 3000);
-  document.addEventListener('visibilitychange', sync);
 });
 onUnmounted(() => {
   disposed = true;
   clearInterval(timer);
-  document.removeEventListener('visibilitychange', sync);
   player?.destroy();
 });
 </script>
@@ -134,17 +158,9 @@ onUnmounted(() => {
   >
     <div ref="host" class="youtube-host" />
     <p v-if="message" role="status">{{ message }}</p>
-    <button :disabled="loading" @click="enable">
-      {{ loading ? 'Connecting…' : enabled ? 'Resume YouTube' : 'Enable YouTube' }}
+    <button v-if="!enabled || suspended" :disabled="loading || !model.connected()" @click="enable">
+      {{ loading ? 'Connecting…' : 'Play' }}
     </button>
-    <small v-if="enabled"
-      >YouTube: {{ observedPlaying ? 'Playing' : 'Paused or buffering' }} ·
-      {{ Math.floor(observedPosition) }}s</small
-    >
-    <small
-      >Room playback · Streams directly from YouTube. Closing, minimizing or hiding this page pauses
-      your player.</small
-    >
   </div>
 </template>
 <style scoped>

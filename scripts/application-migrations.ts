@@ -55,6 +55,25 @@ export async function applicationMigrationManifest() {
               },
             ]
           : []),
+        ...(await Promise.all(
+          (
+            (
+              {
+                identity: ['0002_account_lifecycle', '0003_referral_context'],
+                rooms: [
+                  '0003_account_erasure',
+                  '0004_public_addresses_and_attribution',
+                  '0005_invite_archive',
+                ],
+                friends: ['0002_account_erasure'],
+              } as Record<string, string[]>
+            )[definition.id] ?? []
+          ).map(async (id) => ({
+            owner: definition.id,
+            id,
+            sql: await readFile(`packages/features/${definition.id}/migrations/${id}.sql`, 'utf8'),
+          })),
+        )),
       ],
     })),
   );

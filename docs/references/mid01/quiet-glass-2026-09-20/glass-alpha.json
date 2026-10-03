@@ -1,0 +1,38 @@
+[
+  {
+    "theme": "light",
+    "level": 0,
+    "base": 0.94,
+    "elevated": 0.97
+  },
+  {
+    "theme": "light",
+    "level": 50,
+    "base": 0.76,
+    "elevated": 0.824
+  },
+  {
+    "theme": "light",
+    "level": 100,
+    "base": 0.58,
+    "elevated": 0.68
+  },
+  {
+    "theme": "dark",
+    "level": 0,
+    "base": 0.92,
+    "elevated": 0.96
+  },
+  {
+    "theme": "dark",
+    "level": 50,
+    "base": 0.73,
+    "elevated": 0.8
+  },
+  {
+    "theme": "dark",
+    "level": 100,
+    "base": 0.54,
+    "elevated": 0.64
+  }
+]

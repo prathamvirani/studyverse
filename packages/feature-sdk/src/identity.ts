@@ -19,6 +19,8 @@ export interface IdentityProvider {
   exchange(code: string, challenge: OAuthChallenge, signal: AbortSignal): Promise<ProviderIdentity>;
 }
 export interface SessionDirectory {
+  /** Serialize new session issuance with erasure for an opaque subject. */
+  withSubject<T>(subjectId: string, work: (db: Database) => Promise<T>): Promise<T>;
   list(actor: Actor): Promise<SessionView[]>;
   revokeOwned(actor: Actor, sessionId: string): Promise<void>;
   revokeOthers(actor: Actor): Promise<void>;
@@ -26,6 +28,8 @@ export interface SessionDirectory {
   activity(actor: Actor, label?: string): Promise<void>;
   requireRecent(actor: Actor): Promise<void>;
   markRecent(actor: Actor): Promise<void>;
+  rename(actor: Actor, sessionId: string, name: string): Promise<void>;
+  eraseAccount(actor: Actor, work: (db: Database) => Promise<void>): Promise<void>;
   withSession<T>(actor: Actor, work: (db: Database) => Promise<T>): Promise<T>;
 }
 export type Fail = (code: ErrorCode) => never;

@@ -1,3 +1,5 @@
+import { hideWorkspaceCards, roomSettings } from './room-settings.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import { syntheticMedia } from './synthetic-media.ts';
 test('synthetic mic, camera, screen lifecycle and responsive room evidence', async ({ page }) => {
@@ -46,7 +48,7 @@ test('synthetic mic, camera, screen lifecycle and responsive room evidence', asy
     ['mobile', 390, 844],
   ] as const) {
     await page.setViewportSize({ width, height });
-    if (width < 760) await page.getByRole('button', { name: 'Hide panels' }).click();
+    if (width < 760) await hideWorkspaceCards(page);
     await page.screenshot({ path: `.local/validation/phase06-screen-${name}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
@@ -79,9 +81,17 @@ test('permission denial and picker cancellation never retry automatically', asyn
     page.getByText('Permission denied or selection cancelled.', { exact: false }),
   ).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { calls: number }).calls)).toBe(1);
+  await expect(page.getByRole('button', { name: 'Camera off', exact: true })).toHaveAttribute(
+    'data-state',
+    'error',
+  );
   await page.screenshot({ path: '.local/validation/phase06-permission-error.png' });
   await page.getByRole('button', { name: 'Screen Share off', exact: true }).click();
   expect(await page.evaluate(() => (window as unknown as { calls: number }).calls)).toBe(2);
+  await expect(page.getByRole('button', { name: 'Screen Share off', exact: true })).toHaveAttribute(
+    'data-state',
+    'error',
+  );
   await expect(page.locator('video,audio')).toHaveCount(0);
 });
 test('real application fails closed before any device prompt when media is disabled', async ({
@@ -101,7 +111,8 @@ test('real application fails closed before any device prompt when media is disab
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
   await page.goto('/rooms/new');
   await page.getByLabel('Room name').fill('RTC authorization check');
   await page.getByRole('button', { name: 'Create room', exact: true }).click();
@@ -113,9 +124,10 @@ test('real application fails closed before any device prompt when media is disab
   await page.screenshot({ path: '.local/validation/phase06-real-room-unavailable.png' });
   await page.getByRole('button', { name: 'Dismiss notice' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByLabel('Voice preset').selectOption('high');
-  const settings = (await page.locator('.more-popover').boundingBox())!;
+  await roomSettings(page, 'Audio');
+  await page.getByRole('combobox', { name: 'Voice preset', exact: true }).click();
+  await page.getByRole('option', { name: 'High', exact: true }).click();
+  const settings = (await page.locator('.room-settings').boundingBox())!;
   expect(settings.y).toBeGreaterThanOrEqual(0);
   expect(settings.y + settings.height).toBeLessThan(844);
 });

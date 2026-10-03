@@ -10,7 +10,11 @@
     "./postgres": "./src/postgres/index.ts",
     "./redis": "./src/redis/index.ts",
     "./indexeddb": "./src/indexeddb/index.ts",
-    "./youtube/browser": "./src/youtube/browser.ts"
+    "./youtube/browser": "./src/youtube/browser.ts",
+    "./youtube/server": "./src/youtube/server.ts",
+    "./youtube/personal": "./src/youtube/personal.ts",
+    "./vimeo/browser": "./src/vimeo/browser.ts",
+    "./direct-media/browser": "./src/direct-media/browser.ts"
   },
   "dependencies": {
     "@study/contracts": "0.0.0",

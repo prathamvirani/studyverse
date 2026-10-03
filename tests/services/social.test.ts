@@ -14,12 +14,13 @@ import {
 import { Sessions, AppError, SESSION_COOKIE } from '@study/core/server';
 import { identityModule, identityAccounts } from '@study/identity/server';
 import { roomsModule } from '@study/rooms/server';
+import { backgroundPreviews } from '@study/backgrounds/server';
 import type { IdentityProvider } from '@study/feature-sdk';
 import type { Provider, Room } from '@study/contracts';
 import { createServer } from '../../apps/api/src/server.ts';
 import { readConfig } from '../../apps/api/src/config.ts';
 import { applicationMigrationManifest } from '../../scripts/application-migrations.ts';
-import { socialModules } from '../../apps/api/src/social.ts';
+import { socialComposition } from '../../apps/api/src/social.ts';
 import { socialDirectory } from '@study/friends/server';
 import { createRedis, RedisEphemeralStore } from '@study/adapters/redis';
 import { MemoryLimiter } from '../fixtures/memory.ts';
@@ -155,6 +156,11 @@ beforeEach(async () => {
   const fail = (code: ConstructorParameters<typeof AppError>[0]): never => {
     throw new AppError(code);
   };
+  const social = socialComposition(
+    db,
+    new RedisEphemeralStore(redis),
+    new PostgresSessionStore(db),
+  );
   server = await createServer({
     config: readConfig({
       NODE_ENV: 'test',
@@ -168,12 +174,15 @@ beforeEach(async () => {
     modules: [
       identityModule({ db, directory, providers, fail }),
       roomsModule({
+        inviteKey: 'ab'.repeat(32),
         db,
         accountExists: identityAccounts(db).exists,
         fail,
         social: socialDirectory(db),
+        presence: social.presence,
+        backgrounds: backgroundPreviews(db),
       }),
-      ...socialModules(db, new RedisEphemeralStore(redis), new PostgresSessionStore(db)),
+      ...social.modules,
     ],
   });
 });
@@ -217,16 +226,14 @@ it('every social HTTP action rejects missing authentication, CSRF and hostile or
   for (const path of ['friends/snapshot', 'rooms/friend-invitations'])
     expect((await request(null, path)).statusCode).toBe(401);
 });
-it('current-room and study privacy are enforced inside the room rail as well as friend activity', async () => {
+it('active room occupancy is independent of external disclosure while friend activity remains private', async () => {
   const { a, b, r } = await pair();
   await befriend(a, b);
   const ws = await socketFor(a),
     viewer = await socketFor(b);
   try {
     await ws.send('presence.heartbeat', { roomId: r.id, status: 'break', active: true });
-    expect(JSON.stringify(await viewer.send('presence.room', { roomId: r.id }))).not.toContain(
-      a.id,
-    );
+    expect(JSON.stringify(await viewer.send('presence.room', { roomId: r.id }))).toContain(a.id);
     await request(a, 'friends/privacy', {
       online: true,
       room: true,
@@ -257,7 +264,9 @@ it('current-room and study privacy are enforced inside the room rail as well as 
       .poll(() => viewer.messages.filter((m) => m.event === 'presence.snapshot').at(-1)?.payload, {
         timeout: 5000,
       })
-      .toEqual({ participants: [] });
+      .toEqual({
+        participants: [{ id: a.id, name: 'Study member', status: 'online', room: null }],
+      });
   } finally {
     ws.socket.terminate();
     viewer.socket.terminate();
@@ -575,4 +584,200 @@ it('friend request notifications and privacy changes reach reauthorized socket s
   } finally {
     ws.socket.terminate();
   }
+});
+
+it('exact username discovery is scoped, safe, block-aware and rate limited', async () => {
+  const { a, b, r } = await pair(),
+    stranger = await login('unknown');
+  for (const [user, name] of [
+    [a, 'alice_study'],
+    [b, 'bob_study'],
+    [stranger, 'outside_study'],
+  ] as const)
+    await db.query(sql`UPDATE identity.users SET username=${name} WHERE id=${user.id}`);
+  const search = (name: string) => request(a, `friends/search?username=${name}`);
+  expect((await request(null, 'friends/search?username=bob_study')).statusCode).toBe(401);
+  expect((await search('bob')).json()).toEqual({ person: null });
+  expect((await search('outside_study')).json()).toEqual({ person: null });
+  expect((await search('missing_name')).json()).toEqual({ person: null });
+  const found = await search('BOB_STUDY');
+  expect(found.json()).toEqual({
+    person: { name: 'Study member', username: 'bob_study', state: 'none' },
+  });
+  expect(found.body).not.toContain(b.id);
+  expect((await request(a, 'friends/request', { username: 'outside_study' })).statusCode).toBe(200);
+  expect(
+    (await request(a, 'friends/request', { username: 'bob_study', targetId: b.id })).statusCode,
+  ).toBe(400);
+  expect((await request(a, 'friends/request', { username: 'bob_study' })).statusCode).toBe(200);
+  expect((await search('bob_study')).json().person.state).toBe('outgoing');
+  expect((await request(b, 'friends/search?username=alice_study')).json().person.state).toBe(
+    'incoming',
+  );
+  await request(b, 'friends/accept', { targetId: a.id });
+  expect((await search('bob_study')).json().person.state).toBe('friends');
+  expect(
+    (await request(a, `rooms/shared?targetId=${b.id}`)).json().rooms.map((v: Room) => v.id),
+  ).toEqual([r.id]);
+  expect((await request(stranger, `rooms/shared?targetId=${b.id}`)).statusCode).toBe(403);
+  await request(b, 'friends/block', { targetId: a.id });
+  expect((await search('bob_study')).json()).toEqual({ person: null });
+  expect((await request(a, `rooms/shared?targetId=${b.id}`)).statusCode).toBe(403);
+  expect((await request(a, 'friends/request', { username: 'bob_study' })).statusCode).toBe(403);
+  let status = 0;
+  for (let n = 0; n < 21; n++) status = (await search('missing_name')).statusCode;
+  expect(status).toBe(429);
+});
+
+it('username discovery respects invitation privacy and never accepts prefix or UUID lookup', async () => {
+  const { a, b } = await pair();
+  await db.query(sql`UPDATE identity.users SET username='privacy_study' WHERE id=${b.id}`);
+  await request(b, 'friends/privacy', {
+    online: false,
+    room: false,
+    study: false,
+    join: false,
+    invites: false,
+  });
+  expect((await request(a, 'friends/search?username=privacy_study')).json()).toEqual({
+    person: null,
+  });
+  expect((await request(a, 'friends/request', { username: 'privacy_study' })).statusCode).toBe(403);
+  expect((await request(a, `friends/search?username=${b.id}`)).statusCode).toBe(400);
+  expect((await request(a, 'friends/search?username=privacy%25')).statusCode).toBe(400);
+});
+
+it('room browsing filters and sorts authorized records with distinct membership and visible online counts', async () => {
+  const { a, b, r } = await pair(),
+    stranger = await login('browser-stranger');
+  const hidden = await room(a, 'private'),
+    unlisted = await room(a, 'unlisted');
+  await befriend(a, b);
+  await db.query(
+    sql`UPDATE rooms.rooms SET name='Browse public', created_at='2025-01-01' WHERE id=${r.id}`,
+  );
+  await db.query(
+    sql`INSERT INTO backgrounds.room_defaults(room_id,asset_id,version) VALUES(${r.id},'cedar-library',1)`,
+  );
+  const newer = (
+    await request(a, 'rooms/create', { name: 'Browse newer', privacy: 'public' })
+  ).json() as Room;
+  const browse = (user: User, query = '') =>
+    request(user, `rooms/browse?scope=discover&search=Browse${query}`);
+  const initial = await browse(b);
+  expect(initial.statusCode, initial.body).toBe(200);
+  expect(initial.json().rooms.map((v: Room) => v.id)).not.toContain(hidden.id);
+  expect(initial.json().rooms.map((v: Room) => v.id)).not.toContain(unlisted.id);
+  const sharedRoom = initial.json().rooms.find((v: Room) => v.id === r.id);
+  expect(sharedRoom).toMatchObject({
+    memberCount: 2,
+    onlineCount: 0,
+    backgroundId: 'cedar-library',
+  });
+  expect((await browse(b, '&sort=largest')).json().rooms[0].id).toBe(r.id);
+  expect((await browse(b, '&sort=smallest')).json().rooms[0].id).toBe(newer.id);
+  expect((await browse(b, '&sort=newest')).json().rooms[0].id).toBe(newer.id);
+  expect((await browse(b, '&minMembers=2')).json().rooms.map((v: Room) => v.id)).toEqual([r.id]);
+  const ws = await socketFor(a);
+  try {
+    await ws.send('presence.heartbeat', { roomId: r.id, status: 'focusing', active: true });
+    expect((await browse(b, '&filter=online')).json().rooms).toEqual([]);
+    await request(a, 'friends/privacy', {
+      online: true,
+      room: true,
+      study: true,
+      join: false,
+      invites: true,
+    });
+    const active = (await browse(b, '&filter=studying')).json().rooms;
+    expect(active).toHaveLength(1);
+    expect(active[0]).toMatchObject({
+      id: r.id,
+      memberCount: 2,
+      onlineCount: 1,
+      friendsHere: 1,
+      friendsStudying: 1,
+    });
+    expect((await browse(stranger, '&filter=online')).json().rooms).toEqual([]);
+    await request(a, 'friends/privacy', {
+      online: true,
+      room: true,
+      study: false,
+      join: false,
+      invites: true,
+    });
+    expect((await browse(b, '&filter=studying')).json().rooms).toEqual([]);
+    expect((await browse(b, '&filter=friends')).json().rooms).toHaveLength(1);
+    await request(a, 'friends/block', { targetId: b.id });
+    expect((await browse(b)).json().rooms).toEqual([]);
+  } finally {
+    ws.socket.close();
+  }
+  expect((await request(null, 'rooms/browse')).statusCode).toBe(401);
+  expect((await request(b, 'rooms/browse?scope=private')).statusCode).toBe(400);
+  expect((await request(b, 'rooms/browse?sort=raw')).statusCode).toBe(400);
+  expect((await request(b, 'rooms/browse?cursor=-1')).statusCode).toBe(400);
+});
+
+it('room browse pagination keeps deterministic order without creating memberships', async () => {
+  const a = await login('paged-owner'),
+    b = await login('paged-viewer');
+  for (let n = 0; n < 53; n++) {
+    const id = randomUUID();
+    await db.query(
+      sql`INSERT INTO rooms.rooms(id,owner_id,name,description,tags,privacy) VALUES(${id},${a.id},${'Page ' + String(n).padStart(2, '0')},'', '[]','public')`,
+    );
+    await db.query(
+      sql`INSERT INTO rooms.memberships(room_id,user_id,role) VALUES(${id},${a.id},'owner')`,
+    );
+  }
+  const first = (await request(b, 'rooms/browse?search=Page&sort=newest')).json();
+  expect(first.rooms).toHaveLength(50);
+  expect(first.nextCursor).toBe('50');
+  const second = (
+    await request(b, `rooms/browse?search=Page&sort=newest&cursor=${first.nextCursor}`)
+  ).json();
+  expect(second.rooms).toHaveLength(3);
+  expect(second.nextCursor).toBeNull();
+  expect(new Set([...first.rooms, ...second.rooms].map((r: Room) => r.id)).size).toBe(53);
+  expect((await request(b, 'rooms/mine')).json().rooms).toEqual([]);
+});
+
+it('unified people discovery searches name and username with explicit scopes, consent, blocks and bounded output', async () => {
+  const { a, b } = await pair(),
+    outsider = await login('unified-outsider');
+  await db.query(
+    sql`UPDATE identity.users SET username='prior_partner',display_name='River Reader' WHERE id=${b.id}`,
+  );
+  await db.query(
+    sql`UPDATE identity.users SET username='global_reader',display_name='River Stranger' WHERE id=${outsider.id}`,
+  );
+  const find = (scope: string) => request(a, `friends/find?query=River&scope=${scope}`);
+  expect((await request(null, 'friends/find?query=River&scope=global')).statusCode).toBe(401);
+  const global = await find('global');
+  expect(global.json().people.map((p: { username: string }) => p.username)).toEqual([
+    'global_reader',
+    'prior_partner',
+  ]);
+  expect(global.body).not.toContain(b.id);
+  expect(global.body).not.toContain(outsider.id);
+  expect((await find('met')).json().people.map((p: { username: string }) => p.username)).toEqual([
+    'prior_partner',
+  ]);
+  await request(outsider, 'friends/privacy', {
+    online: false,
+    room: false,
+    study: false,
+    join: false,
+    invites: false,
+  });
+  expect((await find('global')).json().people.map((p: { username: string }) => p.username)).toEqual(
+    ['prior_partner'],
+  );
+  await request(b, 'friends/block', { targetId: a.id });
+  expect((await find('global')).json()).toEqual({ people: [] });
+  expect((await request(a, 'friends/find?query=Ri&scope=global')).statusCode).toBe(400);
+  let status = 0;
+  for (let n = 0; n < 21; n++) status = (await find('global')).statusCode;
+  expect(status).toBe(429);
 });

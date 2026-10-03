@@ -212,6 +212,7 @@ beforeEach(async () => {
       ...productivityModules(db),
       identityModule({ db, directory, providers, fail }),
       roomsModule({
+        inviteKey: 'ab'.repeat(32),
         db,
         accountExists: identityAccounts(db).exists,
         fail,
@@ -413,6 +414,35 @@ it('timer synchronizes commands, clock, persistence and simultaneous versions wi
   expect(
     (await db.query(sql`SELECT state FROM pomodoro.timers WHERE room_id=${r.id}`))[0]!.state,
   ).toMatchObject({ version: 5 });
+});
+it('shared alert runtime is owner-authoritative, bounded and durable while personal config stays private', async () => {
+  const { a, b, r } = await pair();
+  const config = {
+    focusSeconds: 1500,
+    shortBreakSeconds: 300,
+    longBreakSeconds: 900,
+    cycles: 4,
+    autoStart: true,
+    alertRuntime: 'dismiss',
+    alertSeconds: 4,
+  };
+  const command = { roomId: r.id, version: 0, action: 'configure', config };
+  expect((await request(b, 'pomodoro/control', command)).statusCode).toBe(403);
+  expect(
+    (await request(a, 'pomodoro/control', { ...command, config: { ...config, alertSeconds: 31 } }))
+      .statusCode,
+  ).toBe(400);
+  expect((await request(a, 'pomodoro/control', command)).statusCode).toBe(200);
+  expect((await request(b, `pomodoro/snapshot?roomId=${r.id}`)).json()).toMatchObject({
+    canControl: false,
+    state: { version: 1, config: { alertRuntime: 'dismiss', alertSeconds: 4 } },
+  });
+  expect(
+    (await db.query(sql`SELECT state FROM pomodoro.timers WHERE room_id=${r.id}`))[0]!.state,
+  ).toMatchObject({ config: { alertRuntime: 'dismiss' } });
+  expect((await request(b, 'pomodoro/personal-snapshot')).json().state.config).not.toHaveProperty(
+    'alertRuntime',
+  );
 });
 it('chat plain text, block filtering, moderation, IDOR and replay are server authoritative', async () => {
   const { a, b, r } = await pair(),

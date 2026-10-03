@@ -92,6 +92,9 @@ export function createLiveKitProvider(stage: MediaQualityStage = 'basic'): Realt
           local: isLocal,
           source,
           muted: p.isMuted || raw?.readyState === 'ended',
+          ...(source === 'microphone'
+            ? { audioLevel: p.isMuted ? 0 : participant.audioLevel }
+            : {}),
           stream: streams.get(p.trackSid) ?? null,
           requested: isLocal
             ? source === 'microphone'
@@ -131,6 +134,7 @@ export function createLiveKitProvider(stage: MediaQualityStage = 'basic'): Realt
   }
   for (const event of [
     RoomEvent.TrackSubscribed,
+    RoomEvent.ActiveSpeakersChanged,
     RoomEvent.TrackUnsubscribed,
     RoomEvent.TrackPublished,
     RoomEvent.TrackUnpublished,

@@ -1,0 +1,10 @@
+{
+  "origin": "https://localhost:8443",
+  "alpha": {
+    "Light": "rgba(250, 252, 255, 0.58)",
+    "Dark": "rgba(29, 37, 50, 0.54)"
+  },
+  "persisted": true,
+  "navigationSettled": true,
+  "errors": []
+}

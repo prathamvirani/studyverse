@@ -59,7 +59,12 @@ export function createRealtimeClient() {
         .catch((e: Error) => {
           if (subscriptions.get(command) === s) {
             state.errors[command] = e.message;
-            s.clear();
+            if (
+              ['FORBIDDEN', 'UNAUTHENTICATED', 'NOT_FOUND', 'FEATURE_DISABLED'].includes(
+                (e as Error & { code?: string }).code ?? '',
+              )
+            )
+              s.clear();
           }
         });
   }
@@ -90,10 +95,13 @@ export function createRealtimeClient() {
           const replyId = m.requestId ?? m.error?.requestId;
           // Ingress rejection may occur before the transport has parsed a request ID.
           if (m.error && !pending.has(replyId)) {
-            const error = new Error(
-              m.error.code === 'RATE_LIMITED'
-                ? 'Too many requests. Wait a moment, then try again.'
-                : 'Action unavailable. Check your connection or access.',
+            const error = Object.assign(
+              new Error(
+                m.error.code === 'RATE_LIMITED'
+                  ? 'Too many requests. Wait a moment, then try again.'
+                  : 'Action unavailable. Check your connection or access.',
+              ),
+              { code: m.error.code },
             );
             for (const p of pending.values()) {
               clearTimeout(p.timer);
@@ -108,10 +116,13 @@ export function createRealtimeClient() {
               pending.delete(replyId);
               if (m.error)
                 p.reject(
-                  new Error(
-                    m.error.code === 'CONFLICT'
-                      ? 'Changed elsewhere. Review the latest state and try again.'
-                      : 'Action unavailable. Check your access or try again shortly.',
+                  Object.assign(
+                    new Error(
+                      m.error.code === 'CONFLICT'
+                        ? 'Changed elsewhere. Review the latest state and try again.'
+                        : 'Action unavailable. Check your access or try again shortly.',
+                    ),
+                    { code: m.error.code },
                   ),
                 );
               else p.resolve(m.result);
@@ -122,10 +133,17 @@ export function createRealtimeClient() {
           socket.close();
         }
       };
-      socket.onclose = () => {
+      socket.onclose = (event) => {
         if (current !== generation) return;
         state.connected = false;
-        clears();
+        if (event?.code === 1008) clears();
+        else {
+          for (const p of pending.values()) {
+            clearTimeout(p.timer);
+            p.reject(new Error('Reconnecting…'));
+          }
+          pending.clear();
+        }
         if (!stopped)
           reconnect = setTimeout(
             () => void connect(),
@@ -141,9 +159,15 @@ export function createRealtimeClient() {
     send,
     refresh,
     subscribe(command: string, payload: unknown, receive: (v: unknown) => void, clear: () => void) {
-      subscriptions.set(command, { payload, receive, clear });
-      clear();
+      const subscription = { payload, receive, clear };
+      if (!subscriptions.has(command)) clear();
+      subscriptions.set(command, subscription);
       if (state.connected) refresh(command);
+      return () => {
+        if (subscriptions.get(command) !== subscription) return;
+        subscriptions.delete(command);
+        if (state.connected) void send('foundation.unsubscribe', { command }).catch(() => {});
+      };
     },
     start() {
       if (!stopped) return;

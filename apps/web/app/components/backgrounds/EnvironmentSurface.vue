@@ -2,6 +2,31 @@
 import { shouldAnimate } from '@study/backgrounds/browser';
 import type { BackgroundModel } from '../../room/background-model';
 const props = defineProps<{ model: BackgroundModel }>();
+const material = ref('complex');
+let sampledAsset = '';
+function sampleMaterial(event: Event) {
+  props.model.markRendered();
+  const key = state.selected ?? state.roomAsset;
+  if (sampledAsset === key) return;
+  sampledAsset = key;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 16;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return;
+    context.drawImage(event.target as HTMLImageElement, 0, 0, 16, 16);
+    const data = context.getImageData(0, 0, 16, 16).data;
+    const values: number[] = [];
+    for (let i = 0; i < data.length; i += 4)
+      values.push((data[i]! * 0.2126 + data[i + 1]! * 0.7152 + data[i + 2]! * 0.0722) / 255);
+    const mean = values.reduce((sum, n) => sum + n, 0) / values.length;
+    const variance = values.reduce((sum, n) => sum + (n - mean) ** 2, 0) / values.length;
+    material.value = variance > 0.055 ? 'complex' : mean > 0.5 ? 'light' : 'dark';
+  } catch {
+    material.value = 'complex';
+  }
+}
 const state = props.model.state;
 const hidden = ref(true),
   reduced = ref(true),
@@ -9,9 +34,7 @@ const hidden = ref(true),
   frame = ref(0),
   urls = ref<string[]>([]),
   failed = ref(false);
-const asset = computed(() =>
-  props.model.catalog.resolve(state.available ? (state.selected ?? state.roomAsset) : ''),
-);
+const asset = computed(() => props.model.catalog.resolve(state.selected ?? state.roomAsset));
 const running = computed(
   () =>
     state.available &&
@@ -25,7 +48,7 @@ const running = computed(
 const source = computed(() =>
   failed.value
     ? '/backgrounds/quiet-hours.webp'
-    : state.available && urls.value.length
+    : urls.value.length
       ? urls.value[frame.value]
       : asset.value.source,
 );
@@ -62,6 +85,7 @@ watch(
     failed.value = false;
     schedule();
   },
+  { immediate: true },
 );
 watch([running, asset], () => {
   failed.value = false;
@@ -76,7 +100,7 @@ onMounted(() => {
   media.addEventListener('change', motion);
   document.addEventListener('visibilitychange', visibility);
   connection?.addEventListener('change', power);
-  void props.model.init();
+  if (!state.ready) void props.model.init();
 });
 onUnmounted(() => {
   clearTimeout(timer);
@@ -91,8 +115,9 @@ onUnmounted(() => {
   <div
     class="environment-surface"
     aria-hidden="true"
-    :data-background="state.available ? (state.selected ?? asset.id) : 'quiet-hours'"
+    :data-background="state.selected ?? asset.id"
     :data-motion="running ? 'playing' : 'frozen'"
+    :data-material="material"
   >
     <img
       :src="source"
@@ -101,6 +126,7 @@ onUnmounted(() => {
       height="1080"
       decoding="async"
       fetchpriority="high"
+      @load="sampleMaterial"
       @error="
         failed = true;
         state.error = 'Image unavailable. Using a safe default.';

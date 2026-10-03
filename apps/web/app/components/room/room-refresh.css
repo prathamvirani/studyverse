@@ -1,0 +1,588 @@
+/* Room material adaptation is layered over the one global transparency preference. */
+.room-shell {
+  --room-auto: 27;
+  --room-tint: 24 32 45;
+  --glass-opacity: calc(100% - var(--glass-level, var(--room-auto)) * 1%);
+  --glass-elevated-opacity: calc(100% - var(--glass-level, var(--room-auto)) * 1%);
+  --glass: rgb(var(--room-tint) / var(--glass-opacity));
+  --glass-elevated: rgb(var(--room-tint) / var(--glass-elevated-opacity));
+  --glass-blur: 24px;
+  --room-edge: max(12px, env(safe-area-inset-left));
+}
+:root[data-appearance='light'] .room-shell {
+  --room-tint: 44 53 69;
+}
+.room-shell:has([data-material='light']) {
+  --room-auto: 19;
+}
+.room-shell:has([data-material='complex']) {
+  --room-auto: 17;
+  --glass-blur: 30px;
+}
+.room-shell:has([data-material='dark']) {
+  --room-auto: 31;
+}
+.room-shell .glass,
+.room-shell .room-settings {
+  background: var(--glass);
+  border: 1px solid var(--border-highlight);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 10%),
+    var(--shadow-elevated);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.2);
+}
+.room-shell .room-top {
+  top: max(12px, env(safe-area-inset-top));
+  left: var(--room-edge);
+  right: 160px;
+  max-width: none;
+  transform: none;
+  padding: 0;
+  gap: 8px;
+  pointer-events: none;
+}
+.room-top > * {
+  pointer-events: auto;
+}
+.room-shell .room-top > button {
+  border-radius: 50%;
+  min-width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.room-shell .room-top .invite-button {
+  border: 1px solid var(--border-highlight);
+  border-radius: 24px;
+  gap: 4px;
+  padding-inline: 12px;
+}
+.room-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-radius: 26px;
+}
+.room-title h1 {
+  font: 400 clamp(16px, 1.25vw, 21px)/1.2 var(--font-display);
+  max-width: min(40vw, 560px);
+}
+.room-title span {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.room-shell .participant-rail {
+  top: 78px;
+  left: var(--room-edge);
+  bottom: 146px;
+  width: 72px;
+  padding: 14px 6px;
+  gap: 16px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.participant-entry {
+  flex-shrink: 0;
+}
+.participant-entry small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.participant-mute {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.participant-status {
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: var(--success);
+  border-color: var(--surface);
+}
+.participant-status[data-status='Presence private'],
+.participant-status[data-status='Media active'],
+.participant-status[data-status='Offline'] {
+  background: var(--text-muted);
+}
+.participant-speaking .participant-circle {
+  box-shadow:
+    0 0 0 3px var(--success),
+    0 0 18px var(--success-subtle);
+}
+.room-shell .participant-popover {
+  position: absolute;
+  left: 94px;
+  top: 78px;
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+  width: min(260px, calc(100vw - 106px));
+  z-index: 90;
+  background: var(--glass-elevated);
+}
+.participant-count {
+  font-size: 10px;
+  padding-top: 6px;
+}
+.workspace-controls {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  top: max(12px, env(safe-area-inset-top));
+  z-index: 65;
+}
+.workspace-controls > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  border-radius: 24px;
+}
+.workspace-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 240px;
+  padding: 16px;
+}
+.workspace-menu label,
+.room-appearance > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block: 12px;
+}
+.workspace-menu p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+.room-shell .workspace-surface {
+  top: 78px;
+  left: 98px;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: 150px;
+}
+.workspace-card > [data-tile-id] {
+  padding: 8px 12px 18px;
+}
+.workspace-card[data-card-type='pomodoro.panel'] > [data-tile-id] {
+  padding: 4px 12px 8px;
+}
+.workspace-tile {
+  transition:
+    left 240ms var(--ease-soft-spring),
+    top 240ms var(--ease-soft-spring),
+    width 240ms var(--ease-soft-spring),
+    height 240ms var(--ease-soft-spring),
+    box-shadow 180ms;
+}
+.workspace-tile.tile-dragging {
+  transition: none;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 35%);
+}
+.tile-toolbar {
+  border: 0;
+  min-height: 38px;
+  flex-shrink: 0;
+}
+.tile-toolbar button {
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 26px;
+}
+.tile-toolbar .tile-move {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+}
+.snap-targets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+.snap-target {
+  position: absolute;
+  background: rgb(130 175 255 / 8%);
+  border: 1px dashed var(--accent);
+  border-radius: 16px;
+  padding: 14px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.snap-preview {
+  background: rgb(130 175 255 / 25%);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.workspace-restores {
+  bottom: -34px;
+  right: 0;
+  max-width: 100%;
+  gap: 4px;
+}
+.workspace-restores button {
+  padding: 4px 8px;
+  min-height: 28px;
+  font-size: 10px;
+}
+.room-shell .scene-caption {
+  display: block;
+  left: 100px;
+  right: 16px;
+  bottom: max(78px, calc(env(safe-area-inset-bottom) + 78px));
+  text-shadow: 0 2px 12px #000;
+}
+.scene-caption::before {
+  content: '';
+  position: absolute;
+  inset: -10px -16px;
+  width: min(400px, 100%);
+  background: radial-gradient(ellipse at left, rgb(0 0 0 / 28%), transparent 75%);
+  z-index: -1;
+}
+.scene-caption span {
+  color: #edf1f8;
+  font-size: clamp(7px, 0.7vw, 10px);
+}
+.scene-caption p {
+  color: #fff;
+  font-size: clamp(16px, 2.2vw, 28px);
+  line-height: 1.15;
+  margin-top: 4px;
+}
+.room-shell .room-dock {
+  bottom: max(10px, env(safe-area-inset-bottom));
+  border-radius: 24px;
+  padding: 5px 8px;
+  width: auto;
+  max-width: calc(100% - 16px);
+}
+.room-dock > [data-extension-point] > section > button {
+  min-width: 54px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 7px;
+  border-radius: 16px;
+}
+.room-dock > [data-extension-point] > section > button small {
+  font-size: 8px;
+}
+.room-dock > [data-extension-point] > section > button[aria-pressed='true'] {
+  background: var(--accent-subtle);
+  border-color: transparent;
+}
+.room-dock button[data-state='speaking'] {
+  box-shadow: inset 0 0 0 2px var(--success);
+}
+.room-dock button[data-state='error'] {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
+.room-dock button[data-state='starting'] svg {
+  animation: room-spin 1s linear infinite;
+}
+@keyframes room-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.room-shell .room-notice {
+  bottom: 76px;
+  max-height: 120px;
+  overflow-y: auto;
+  background: var(--glass-elevated);
+}
+.room-shell .room-settings {
+  width: min(900px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 32px);
+  color: var(--text-primary);
+  background: var(--glass-elevated);
+  height: min(720px, calc(100dvh - 32px));
+  overflow: hidden;
+  transform: scale(0.98);
+  transition:
+    opacity 200ms,
+    transform 240ms var(--ease-soft-spring),
+    display 240ms allow-discrete,
+    overlay 240ms allow-discrete;
+}
+.room-shell .room-settings[open] {
+  display: flex;
+  flex-direction: column;
+  transform: none;
+}
+.room-settings .ui-sheet-heading {
+  flex-shrink: 0;
+}
+.room-settings .ui-sheet-body.has-categories {
+  grid-template-columns: 170px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.room-settings .ui-sheet-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  padding: 4px 8px 16px 2px;
+}
+.room-settings nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+  align-self: start;
+  max-height: 100%;
+}
+.room-settings nav button {
+  text-align: left;
+}
+.room-settings nav button[aria-current] {
+  background: var(--accent-subtle);
+}
+.room-settings h3 {
+  font: 500 16px var(--font-ui);
+  margin: 0 0 16px;
+}
+.room-settings p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.room-settings label {
+  min-width: 0;
+}
+.room-settings select,
+.room-settings input:not([type='checkbox']) {
+  max-width: 100%;
+}
+.room-settings .settings-back {
+  display: none;
+}
+.room-settings::backdrop {
+  background: rgb(0 0 0 / 38%);
+  backdrop-filter: blur(5px);
+}
+.room-appearance > h3 {
+  margin-top: 22px;
+}
+.room-appearance > label:has([type='range']) {
+  display: grid;
+}
+.room-appearance [type='range'] {
+  width: 100%;
+}
+.room-clock {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.room-clock time {
+  font-size: clamp(24px, 3vw, 44px);
+  letter-spacing: -0.04em;
+}
+.room-clock small {
+  color: var(--text-secondary);
+}
+.room-projector .workspace-card {
+  background: var(--glass-elevated);
+}
+.room-projector .timer-digits,
+.room-projector .room-clock time {
+  font-size: clamp(42px, 7vw, 108px);
+}
+.room-reveal {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 12px;
+  z-index: 85;
+  gap: 8px;
+}
+.room-reveal small {
+  display: block;
+  font-size: 9px;
+}
+@media (max-width: 760px) {
+  .room-shell .room-top {
+    right: 60px;
+    gap: 5px;
+  }
+  .room-title {
+    flex: 1;
+    gap: 5px;
+    padding: 9px 10px;
+  }
+  .room-title h1 {
+    max-width: none;
+    font-size: 17px;
+  }
+  .room-title span {
+    font-size: 8px;
+  }
+  .room-shell .room-top .invite-button {
+    font-size: 10px;
+    padding-inline: 7px;
+    min-width: 0;
+  }
+  .invite-button svg {
+    display: none;
+  }
+  .workspace-controls > button span {
+    display: none;
+  }
+  .workspace-controls > button {
+    width: 40px;
+    justify-content: center;
+  }
+  .room-shell .participant-rail {
+    left: 8px;
+    width: 54px;
+    padding: 10px 3px;
+  }
+  .room-shell .participant-circle {
+    width: 40px;
+    height: 40px;
+  }
+  .room-shell .workspace-surface {
+    left: 72px;
+    right: 8px;
+    top: 78px;
+    bottom: 155px;
+  }
+  .room-shell .scene-caption {
+    left: 76px;
+    bottom: 77px;
+  }
+  .room-shell .participant-popover {
+    left: 68px;
+    width: calc(100vw - 80px);
+  }
+  .room-shell .room-dock {
+    width: calc(100% - 16px);
+    max-width: 380px;
+    padding: 3px;
+  }
+  .room-dock > [data-extension-point] > section > button {
+    min-width: 0;
+    width: 100%;
+    padding: 6px 2px;
+  }
+  .workspace-restores {
+    bottom: -35px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    left: 0;
+  }
+  .workspace-restores button {
+    flex-shrink: 0;
+  }
+  .room-settings .ui-sheet-body.has-categories {
+    display: block;
+    overflow-y: auto;
+  }
+  .room-settings:not(.settings-drilled) .ui-sheet-content {
+    display: none;
+  }
+  .room-settings.settings-drilled nav {
+    display: none;
+  }
+  .room-settings .settings-back {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+}
+@media (max-height: 550px) {
+  .room-shell .room-top {
+    top: 6px;
+  }
+  .room-shell .workspace-surface,
+  .room-shell .participant-rail {
+    top: 60px;
+    bottom: 138px;
+  }
+  .room-shell .workspace-surface {
+    bottom: 160px;
+  }
+  .scene-caption p {
+    font-size: 17px;
+  }
+  .room-settings {
+    margin-block: 8px;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root .room-shell {
+    --glass-opacity: 100%;
+    --glass-elevated-opacity: 100%;
+    --glass-blur: 0px;
+  }
+}
+@media (forced-colors: active) {
+  .room-shell .glass,
+  .room-shell .room-settings {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+    backdrop-filter: none;
+  }
+  .participant-speaking .participant-circle {
+    outline: 3px solid Highlight;
+  }
+}
+.presentation-quiet .workspace-restores {
+  display: none;
+}
+@starting-style {
+  .room-settings[open] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .room-shell {
+    --glass-opacity: 98%;
+    --glass-elevated-opacity: 100%;
+  }
+}
+/* Keep essential workspace controls reachable on coarse-pointer layouts. */
+@media (pointer: coarse) {
+  .room-shell .tile-toolbar button,
+  .room-shell .room-top > button,
+  .room-shell .clock-settings-button,
+  .room-shell .timer-controls button,
+  .room-shell .timer-footer button,
+  .room-shell .timer-reset,
+  .room-shell .pomodoro-timer button[aria-label='Timer settings'] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .room-shell .clock-settings-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (forced-colors: active) {
+  .room-shell :focus-visible {
+    outline-color: Highlight;
+  }
+}

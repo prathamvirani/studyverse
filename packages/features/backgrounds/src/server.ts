@@ -7,6 +7,19 @@ import {
   backgroundChangeSchema,
 } from '@study/contracts';
 import { curatedProvider, defaultBackground } from './browser.ts';
+export function backgroundPreviews(
+  db: Database,
+): import('@study/feature-sdk').RoomBackgroundPreview {
+  return {
+    async preview(roomId) {
+      const [row] = await db.query(
+        sql`SELECT asset_id FROM backgrounds.room_defaults WHERE room_id=${roomId}`,
+      );
+      const id = String(row?.asset_id ?? defaultBackground);
+      return curatedProvider.assets().some((asset) => asset.id === id) ? id : null;
+    },
+  };
+}
 export const backgroundsDefinition = {
   id: 'backgrounds',
   version: '1.0.0',

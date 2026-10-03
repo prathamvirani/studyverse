@@ -166,9 +166,17 @@ beforeEach(async () => {
     sessions,
     limiter: { consume: (key, policy) => redisLimiter.consume(rateNamespace + ':' + key, policy) },
     modules: [
-      ...roomMediaModules(db, social.occupancy),
+      ...roomMediaModules(db, social.occupancy, {}, false, {
+        resolve: async (videoId) => ({
+          videoId,
+          provider: 'youtube',
+          status: 'ready',
+          title: 'Quiet session',
+        }),
+      }),
       identityModule({ db, directory, providers, fail }),
       roomsModule({
+        inviteKey: 'ab'.repeat(32),
         db,
         accountExists: identityAccounts(db).exists,
         fail,
@@ -240,10 +248,103 @@ async function control(user: User, v: MediaView, action: MediaAction) {
   expect(r.statusCode, r.body).toBe(200);
   return mediaViewSchema.parse(r.json());
 }
+it('personal promotion uses existing room authority; no private history query or forged provider/identity is accepted', async () => {
+  const { a, b, r } = await pair(),
+    client = await socketFor(b);
+  try {
+    await client.send('presence.heartbeat', { roomId: r.id, status: 'online', active: true });
+    let view = await snapshot(b, r.id);
+    const action = { type: 'enqueue-play', videoId: 'M7lc1UVf-VE' };
+    expect((await request(b, 'room-media/control', { ...revision(view), action })).statusCode).toBe(
+      403,
+    );
+    const suggestion = await request(b, 'room-media/suggest', { ...revision(view), action });
+    expect(suggestion.statusCode, suggestion.body).toBe(200);
+    view = mediaViewSchema.parse(suggestion.json());
+    expect(view.suggestions[0]?.action).toEqual(action);
+    for (const path of [
+      `personal-media/history?userId=${a.id}`,
+      `personal-media/progress?userId=${a.id}`,
+      `personal-media/preferences?userId=${a.id}`,
+    ])
+      expect((await request(b, path)).statusCode).toBe(404);
+    const unknown = await client.send('personal-media.history', { userId: a.id, roomId: r.id });
+    expect(unknown).toHaveProperty('error');
+    for (const field of [
+      'history',
+      'canonicalUrl',
+      'personalVolume',
+      'tile',
+      'lastOpenedAt',
+      'personalRate',
+    ]) {
+      expect(JSON.stringify(await snapshot(b, r.id))).not.toContain(`"${field}"`);
+    }
+    const promote = await request(a, 'room-media/suggestion-decide', {
+      ...revision(view),
+      suggestionId: view.suggestions[0]!.id,
+      accept: true,
+    });
+    expect(promote.statusCode, promote.body).toBe(200);
+    view = mediaViewSchema.parse(promote.json());
+    expect(view.state.queue).toEqual(['M7lc1UVf-VE']);
+    expect(view.state.playing).toBe(true);
+    for (const forged of [
+      { ...revision(view), action, userId: a.id, role: 'owner' },
+      { ...revision(view), action: { ...action, provider: 'vimeo' } },
+      {
+        ...revision(view),
+        action: { ...action, videoId: 'https://private.example/auth.mp4?token=private' },
+      },
+    ])
+      expect((await request(b, 'room-media/control', forged)).statusCode).toBe(400);
+    const other = await room(a);
+    expect(
+      (await request(b, 'room-media/suggest', { ...revision(view), roomId: other.id, action }))
+        .statusCode,
+    ).toBe(403);
+    await db.query(sql`DELETE FROM rooms.memberships WHERE room_id=${r.id} AND user_id=${b.id}`);
+    expect((await request(b, 'room-media/suggest', { ...revision(view), action })).statusCode).toBe(
+      403,
+    );
+    expect(await client.send('room-media.suggest', { ...revision(view), action })).toHaveProperty(
+      'error',
+    );
+  } finally {
+    client.socket.close();
+  }
+});
+it('metadata requires current membership and strict public identifiers; reorder retains control authority', async () => {
+  const { a, b, r } = await pair();
+  const outsider = await login('outsider');
+  const path = `room-media/metadata?roomId=${r.id}&videoId=M7lc1UVf-VE`;
+  expect((await request(outsider, path)).statusCode).toBe(403);
+  expect((await request(b, path)).json().title).toBe('Quiet session');
+  expect(
+    (await request(a, `room-media/metadata?roomId=${r.id}&videoId=https://private.test`))
+      .statusCode,
+  ).toBe(400);
+  let v = await snapshot(a, r.id);
+  v = await control(a, v, { type: 'enqueue-play', videoId: 'M7lc1UVf-VE' });
+  v = await control(a, v, { type: 'enqueue', videoId: 'abcdefghijk' });
+  expect(
+    (
+      await request(b, 'room-media/control', {
+        ...revision(v),
+        action: { type: 'move', from: 0, to: 1 },
+      })
+    ).statusCode,
+  ).toBe(403);
+  v = await control(a, v, { type: 'move', from: 0, to: 1 });
+  expect(v.state.current).toBe(1);
+  expect(v.state.playing).toBe(true);
+});
 it('durable baseline, version races, pause/play/seek and restart epoch reject stale state', async () => {
   const { a, b, r } = await pair();
+  await db.query(sql`UPDATE identity.users SET username='media_owner' WHERE id=${a.id}`);
   let v = await snapshot(a, r.id);
   v = await control(a, v, { type: 'enqueue', videoId: 'M7lc1UVf-VE' });
+  expect(v.controller).toEqual({ id: a.id, name: 'Study member' });
   const stale = revision(v);
   v = await control(a, v, { type: 'play' });
   v = await control(a, v, { type: 'seek', position: 120 });

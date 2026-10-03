@@ -19,6 +19,7 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
     disposed = false,
     selectionGeneration = 0;
   let queue = Promise.resolve();
+  let unsubscribe: (() => void) | undefined;
   let assetOpening: Promise<LocalVisualStore> | undefined;
   const ensureAssets = async () => {
     try {
@@ -70,7 +71,7 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
     for (const a of state.customs) URL.revokeObjectURL(a.preview);
     state.customs = items.map((a) => ({ ...a, preview: URL.createObjectURL(a.thumbnail) }));
   };
-  const select = async (id: string | null) => {
+  const select = async (id: string | null, persist = true) => {
     const generation = ++selectionGeneration;
     state.error = '';
     let custom: LocalVisualAsset | undefined;
@@ -88,11 +89,18 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
     }
     state.custom = custom ?? null;
     state.selected = id;
-    await save();
+    if (persist) await save();
   };
+  let preparation: Promise<void> | undefined;
+  let markRendered!: () => void;
+  const rendered = new Promise<void>((resolve) => {
+    markRendered = resolve;
+  });
   const model = {
     state,
     catalog,
+    rendered,
+    markRendered,
     async browse() {
       try {
         await ensureAssets();
@@ -101,24 +109,51 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
         state.error = 'Custom image storage is unavailable on this device.';
       }
     },
+    prepare(roomAsset = defaultBackground) {
+      state.roomAsset = catalog.resolve(roomAsset).id;
+      return (preparation ??= (async () => {
+        const initialSelection = selectionGeneration;
+        store = await createPreferenceStore([preference]);
+        if (disposed) {
+          await store.close();
+          return;
+        }
+        const saved = await store.get(preference);
+        if (disposed) return;
+        if (initialSelection === selectionGeneration) {
+          Object.assign(state, saved);
+          await select(saved.selected, false);
+        } else await save();
+        if (disposed) return;
+        // Decode the actual device override or authorized durable room asset before reveal.
+        const source = state.custom?.frames[0];
+        const url = source
+          ? URL.createObjectURL(source)
+          : catalog.resolve(state.selected ?? state.roomAsset).source;
+        try {
+          const image = new Image();
+          image.src = url;
+          await image.decode();
+        } finally {
+          if (source) URL.revokeObjectURL(url);
+        }
+        if (!disposed) state.ready = true;
+      })());
+    },
     async init() {
-      store = await createPreferenceStore([preference]);
-      if (disposed) {
-        await store.close();
-        return;
-      }
-      const saved = await store.get(preference);
-      if (disposed) return;
-      Object.assign(state, saved);
-      await select(saved.selected);
-      if (disposed) return;
-      state.ready = true;
+      await model.prepare(state.roomAsset);
+      model.activate();
+    },
+    activate() {
+      if (disposed || unsubscribe) return;
       // Reuse the productivity socket; no additional RTC or polling channel.
-      realtime.subscribe(
+      unsubscribe = realtime.subscribe(
         'backgrounds.snapshot',
         { roomId },
         (v) => {
+          if (disposed) return;
           const view = backgroundViewSchema.parse(v);
+          if (view.state.version < state.version) return;
           state.available = true;
           state.canControl = view.canControl;
           state.roomAsset = catalog.resolve(view.state.assetId).id;
@@ -127,7 +162,6 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
         () => {
           state.available = false;
           state.canControl = false;
-          state.roomAsset = defaultBackground;
         },
       );
     },
@@ -199,6 +233,7 @@ export function createBackgroundModel(roomId: string, userId: string, realtime: 
     dispose() {
       if (disposed) return;
       disposed = true;
+      unsubscribe?.();
       selectionGeneration++;
       for (const a of state.customs) URL.revokeObjectURL(a.preview);
       assets?.close();

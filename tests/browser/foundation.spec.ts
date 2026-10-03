@@ -8,7 +8,7 @@ test('serves the Nuxt skeleton over HTTPS with CSP and no browser-readable authe
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const response = await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'A quiet place to focus.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your space to focus, together.' })).toBeVisible();
   const csp = response?.headers()['content-security-policy'];
   expect(csp).toContain("'nonce-");
   expect(csp).not.toContain("'unsafe-eval'");

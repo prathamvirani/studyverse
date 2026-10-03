@@ -7,7 +7,10 @@ vi.mock('@study/adapters/indexeddb', () => ({
   createPreferenceStore: adapters.preferences,
   createLocalVisualStore: adapters.assets,
 }));
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function realtime(): RealtimeClient {
   return {
@@ -69,4 +72,51 @@ it('does not allocate thumbnail URLs when browsing completes after disposal', as
   expect(createUrl).not.toHaveBeenCalled();
   expect(model.state.customs).toEqual([]);
   expect(assets.close).toHaveBeenCalledTimes(1);
+});
+
+it('prepares the authorized asset and local override without writes, sockets or duplicate activation', async () => {
+  const store = {
+    get: vi.fn().mockResolvedValue({ selected: 'morning-studio', favorites: [], paused: true }),
+    set: vi.fn(),
+    close: vi.fn(),
+  };
+  adapters.preferences.mockResolvedValue(store);
+  let release!: () => void;
+  const decoded = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const sources: string[] = [];
+  vi.stubGlobal(
+    'Image',
+    class {
+      set src(value: string) {
+        sources.push(value);
+      }
+      decode = () => decoded;
+    },
+  );
+  const client = realtime();
+  vi.mocked(client.subscribe).mockReturnValue(() => {});
+  const model = createBackgroundModel('selected-room', 'account', client);
+  const preparation = model.prepare('cedar-library');
+  await vi.waitFor(() => expect(sources).toEqual(['/backgrounds/morning-studio.webp']));
+  expect(model.state.roomAsset).toBe('cedar-library');
+  expect(model.state.ready).toBe(false);
+  expect(client.subscribe).not.toHaveBeenCalled();
+  expect(client.start).not.toHaveBeenCalled();
+  expect(store.set).not.toHaveBeenCalled();
+  release();
+  await preparation;
+  expect(model.state.ready).toBe(true);
+  model.activate();
+  model.activate();
+  expect(client.subscribe).toHaveBeenCalledTimes(1);
+  expect(client.subscribe).toHaveBeenCalledWith(
+    'backgrounds.snapshot',
+    { roomId: 'selected-room' },
+    expect.any(Function),
+    expect.any(Function),
+  );
+  expect(sources).toHaveLength(1);
+  model.dispose();
 });

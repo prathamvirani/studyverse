@@ -40,7 +40,9 @@ export function importViolations(from: string, specifier: string): string[] {
     current !== other &&
     specifier.startsWith('.') &&
     !current.startsWith('tests/') &&
-    !from.startsWith('scripts/')
+    !from.startsWith('scripts/') &&
+    // A Nuxt build provider is infrastructure, never a client dependency.
+    !(from === 'apps/web/nuxt.config.ts' && target === 'infra/nuxt/local-font-provider.ts')
   )
     errors.push('Cross-package relative import; use public exports');
   if (publicPackage && /\/(?:src|internal|dist)\//.test(publicPackage[2]!))

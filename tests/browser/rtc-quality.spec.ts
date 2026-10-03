@@ -1,3 +1,5 @@
+import { roomSettings } from './room-settings.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
@@ -52,7 +54,8 @@ async function login(page: Page, provider: string) {
   });
   await page.goto('/');
   await page.getByRole('button', { name: `Continue with ${provider}` }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
 }
 async function stats(page: Page) {
   return page.evaluate(async () => {
@@ -115,13 +118,12 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
       name: 'Advanced RTC validation',
       privacy: 'public',
     });
-    await alice.goto(`/rooms/${room.id}`);
-    await bob.goto(`/rooms/${room.id}`);
+    await alice.goto(`/rooms/${room.publicId}/configure`);
+    await bob.goto(`/rooms/${room.publicId}/configure`);
     await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
     await bob.getByRole('button', { name: 'Join room', exact: true }).click();
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
+    await roomSettings(alice, 'Quality');
     await alice.getByRole('button', { name: 'High', exact: true }).click();
-    await alice.getByRole('button', { name: 'Apply media preferences', exact: true }).click();
     await expect(
       alice.getByRole('status').filter({ hasText: 'Preferences applied' }),
     ).toBeVisible();
@@ -131,7 +133,9 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
     await alice.getByLabel('Camera send width', { exact: true }).scrollIntoViewIfNeeded();
     await alice.screenshot({ path: '.local/validation/phase07-advanced-desktop.png' });
     await alice.setViewportSize({ width: 390, height: 844 });
-    await alice.getByLabel('Quality mode', { exact: true }).scrollIntoViewIfNeeded();
+    await alice
+      .getByRole('combobox', { name: 'Quality mode', exact: true })
+      .scrollIntoViewIfNeeded();
     await alice.screenshot({ path: '.local/validation/phase07-advanced-mobile.png' });
     await alice.getByLabel('Camera send width', { exact: true }).scrollIntoViewIfNeeded();
     await alice.screenshot({ path: '.local/validation/phase07-mobile-controls.png' });
@@ -147,14 +151,17 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
       .poll(() => remote.evaluate((v: HTMLVideoElement) => v.videoWidth))
       .toBeGreaterThan(0);
     expect(await remote.evaluate((v: HTMLVideoElement) => v.videoHeight)).toBeLessThanOrEqual(480);
-    await bob.getByRole('button', { name: 'More', exact: true }).click();
+    await roomSettings(bob, 'Quality');
     await bob.getByRole('button', { name: 'High', exact: true }).click();
-    await bob.getByRole('button', { name: 'Apply media preferences', exact: true }).click();
     await bob.keyboard.press('Escape');
     await bob.locator(`#participant-${user.id}`).click();
     await bob.getByRole('button', { name: 'Expand camera', exact: true }).click();
     await bob.keyboard.press('Escape');
-    await bob.getByRole('button', { name: 'Fullscreen tile', exact: true }).click();
+    await bob
+      .locator('.workspace-tile')
+      .filter({ has: remote })
+      .getByRole('button', { name: 'Fullscreen tile', exact: true })
+      .click();
     await expect
       .poll(() => remote.evaluate((v: HTMLVideoElement) => v.videoHeight), { timeout: 20000 })
       .toBeGreaterThan(480);
@@ -165,8 +172,7 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
       bob: await stats(bob),
       cpu: await cdp.send('Performance.getMetrics'),
     };
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
-    await alice.getByText('Live diagnostics · requested vs actual', { exact: true }).click();
+    await roomSettings(alice, 'Diagnostics');
     await expect(alice.getByText(/Actual RTP: 1920/)).toBeVisible({ timeout: 15000 });
     await expect(alice.getByText(/Actual RTP:.*\d\.\d{2} Mbps/)).toBeVisible({ timeout: 15000 });
     await alice.screenshot({ path: '.local/validation/phase07-diagnostics.png' });
@@ -195,15 +201,17 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
     );
     // Processing changes and presets must not request the camera again.
     const captures = (await stats(alice)).captures;
+    await roomSettings(alice, 'Quality');
     await alice.getByRole('button', { name: 'Data Saver', exact: true }).click();
-    await alice.getByRole('button', { name: 'Apply media preferences', exact: true }).click();
     await expect(
       alice.getByRole('status').filter({ hasText: 'Preferences applied' }),
     ).toBeVisible();
     expect((await stats(alice)).captures).toBe(captures);
     await alice.getByRole('button', { name: 'Load Home Fibre', exact: true }).click();
     await expect(alice.getByLabel('Camera send width', { exact: true })).toHaveValue('1920');
-    await alice.getByLabel('Voice preset', { exact: true }).selectOption('studio');
+    await roomSettings(alice, 'Audio');
+    await alice.getByRole('combobox', { name: 'Voice preset', exact: true }).click();
+    await alice.getByRole('option', { name: 'Studio Voice', exact: true }).click();
     await alice.getByRole('button', { name: 'Apply media preferences', exact: true }).click();
     await expect(
       alice.getByRole('button', { name: 'Apply media preferences', exact: true }),
@@ -229,9 +237,10 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
           .evaluate((v: HTMLVideoElement) => v.videoWidth),
       )
       .toBeGreaterThan(0);
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
+    await roomSettings(alice, 'Quality');
     await alice.getByText('Screen send', { exact: true }).click();
-    await alice.getByLabel('Screen send FPS preset', { exact: true }).selectOption('30');
+    await alice.getByRole('combobox', { name: 'Screen send FPS preset', exact: true }).click();
+    await alice.getByRole('option', { name: '30', exact: true }).click();
     await alice.getByRole('button', { name: 'Apply media preferences', exact: true }).click();
     await expect(
       alice.getByRole('status').filter({ hasText: 'Preferences applied' }),
@@ -252,11 +261,13 @@ test('advanced Stage A quality forwards through real SFU, persists safely and re
       JSON.stringify({ alice: await stats(alice), bob: await stats(bob) }, null, 2),
     );
     await alice.reload();
-    await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
+    await expect(alice.locator('.room-dock')).toBeVisible();
     await expect(alice.getByRole('button', { name: 'Camera off', exact: true })).toBeVisible();
     await expect(alice.locator('video,audio')).toHaveCount(0);
-    await alice.getByRole('button', { name: 'More', exact: true }).click();
-    await expect(alice.getByLabel('Quality mode', { exact: true })).toHaveValue('advanced');
+    await roomSettings(alice, 'Quality');
+    await expect(alice.getByRole('combobox', { name: 'Quality mode', exact: true })).toHaveText(
+      'Advanced',
+    );
     await expect(alice.getByRole('button', { name: 'Load Home Fibre', exact: true })).toBeVisible();
   } finally {
     await a.close();

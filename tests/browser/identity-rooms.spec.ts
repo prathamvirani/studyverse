@@ -1,3 +1,4 @@
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 
 test('signs in, creates a lasting room, edits its profile and manages invitations', async ({
@@ -6,7 +7,8 @@ test('signs in, creates a lasting room, edits its profile and manages invitation
 }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
   await expect(page.getByRole('heading', { name: 'Account & devices' })).toBeVisible();
   await page.getByLabel('Display name', { exact: true }).fill('<script>alert(1)</script>');
   await page.getByRole('button', { name: 'Save profile' }).click();
@@ -15,15 +17,17 @@ test('signs in, creates a lasting room, edits its profile and manages invitation
   await page.getByRole('link', { name: 'Create a room' }).click();
   const name = `Study room ${Date.now()}`;
   await page.getByLabel('Room name').fill(name);
-  await page.getByLabel('Privacy').selectOption('private');
+  await page.getByRole('radio', { name: 'Private Members and invited people' }).check();
   await page.getByRole('button', { name: 'Create room', exact: true }).click();
-  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name, exact: true, level: 1 })).toBeVisible();
   const roomUrl = page.url();
   await page.getByRole('button', { name: 'Enter room', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Room controls' })).toBeVisible();
   await page.getByRole('button', { name: 'Back to room details' }).click();
   await page.getByRole('button', { name: 'Create invite link', exact: true }).click();
-  await expect(page.getByLabel('New invite link')).toContainText('/invite#');
+  await expect(page.getByRole('textbox', { name: 'New invite link' })).toHaveValue(
+    /\?invite-code=/,
+  );
   await page.getByRole('button', { name: 'Revoke invite', exact: true }).first().click();
   await page.reload();
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
@@ -74,9 +78,10 @@ for (const provider of ['Discord']) {
   test(`completes the isolated ${provider} provider flow and signs out`, async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: `Continue with ${provider}` }).click();
-    await expect(page).toHaveURL('/account');
+    await finishOnboarding(page);
+    await page.goto('/account');
     await expect(
-      page.getByRole('button', { name: `Reauthenticate with ${provider.toLowerCase()}` }),
+      page.getByRole('button', { name: `Reauthenticate with ${provider}` }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL('/');

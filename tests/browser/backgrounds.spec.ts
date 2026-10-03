@@ -1,3 +1,5 @@
+import { hideWorkspaceCards } from './room-settings.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 test('background selector, responsive room, secure local imports, persistence and reduced motion', async ({
@@ -14,7 +16,8 @@ test('background selector, responsive room, secure local imports, persistence an
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
   const room = await page.evaluate(async () => {
     const { csrfToken } = await fetch('/api/v1/session/csrf').then((r) => r.json());
     return fetch('/api/v1/rooms/create', {
@@ -23,7 +26,7 @@ test('background selector, responsive room, secure local imports, persistence an
       body: JSON.stringify({ name: 'Quiet environments', privacy: 'public' }),
     }).then((r) => r.json());
   });
-  await page.goto(`/rooms/${room.id}`);
+  await page.goto(`/rooms/${room.publicId}/configure`);
   await page.getByRole('button', { name: 'Enter room', exact: true }).click();
   const surface = page.locator('.environment-surface');
   await page.getByRole('button', { name: 'Background', exact: true }).click();
@@ -121,16 +124,18 @@ test('background selector, responsive room, secure local imports, persistence an
   const selected = await surface.getAttribute('data-background');
   await dialog.getByRole('button', { name: 'Close backgrounds' }).click();
   await page.reload();
-  await page.getByRole('button', { name: 'Enter room', exact: true }).click();
+  await expect(page.locator('.room-dock')).toBeVisible();
   await expect(surface).toHaveAttribute('data-background', selected!);
   await page.getByRole('button', { name: 'Background', exact: true }).click();
   await expect(
     dialog.getByRole('button', { name: 'Favorite Cedar library', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
-  await dialog.getByLabel('Background scope').selectOption('room');
+  await dialog.getByRole('combobox', { name: 'Background scope' }).click();
+  await page.getByRole('option', { name: 'Room default', exact: true }).click();
   await dialog.getByRole('button', { name: 'Select Alpine stillness', exact: true }).click();
   await expect(surface).toHaveAttribute('data-background', 'alpine-lake');
-  await dialog.getByLabel('Background scope').selectOption('personal');
+  await dialog.getByRole('combobox', { name: 'Background scope' }).click();
+  await page.getByRole('option', { name: 'My device', exact: true }).click();
   for (const [label, width, height] of [
     ['tablet', 768, 1024],
     ['mobile', 390, 844],
@@ -149,8 +154,7 @@ test('background selector, responsive room, secure local imports, persistence an
     await page.screenshot({ path: `.local/validation/phase05-selector-${label}.png` });
     await dialog.getByRole('button', { name: 'Close backgrounds' }).click();
     await page.screenshot({ path: `.local/validation/phase05-room-${label}.png` });
-    if (label === 'mobile')
-      await page.getByRole('button', { name: 'Hide panels →', exact: true }).click();
+    if (label === 'mobile') await hideWorkspaceCards(page);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -192,7 +196,7 @@ test('background selector, responsive room, secure local imports, persistence an
     db.close();
   });
   await page.reload();
-  await page.getByRole('button', { name: 'Enter room', exact: true }).click();
+  await expect(page.locator('.room-dock')).toBeVisible();
   await expect(surface).toHaveAttribute('data-background', 'alpine-lake');
   expect(await page.locator('audio,video').count()).toBe(0);
   expect(errors).toEqual([]);

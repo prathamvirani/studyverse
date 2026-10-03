@@ -1,0 +1,8 @@
+{
+  "origin": "https://localhost:8443",
+  "route": "/home",
+  "marks": true,
+  "staleSessionStatus": 401,
+  "publicProvidersStatus": 200,
+  "errors": []
+}

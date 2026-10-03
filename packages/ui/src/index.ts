@@ -1,7 +1,77 @@
-import { defineAsyncComponent, defineComponent, h, onErrorCaptured, ref } from 'vue';
-import type { Component, PropType } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  defineComponent,
+  h,
+  onErrorCaptured,
+  provide,
+  ref,
+} from 'vue';
+import type { Component, PropType, InjectionKey, ComputedRef } from 'vue';
 import type { ExtensionPoint } from '@study/contracts';
 import type { TileInstance, TileRegistry, UiRegistry } from '@study/core/browser';
+export { OverlayPopover } from './components/popover.ts';
+export {
+  GlassSurface,
+  PageHeader,
+  ContextPane,
+  IntegratedSearch,
+  StudySelect,
+  SegmentedControl,
+  IconButton,
+  StatusBadge,
+  Loader,
+  SettingsSheet,
+  MenuRow,
+  StudySlider,
+} from './components/primitives.ts';
+export type { SelectOption } from './components/primitives.ts';
+export {
+  House,
+  PanelsTopLeft,
+  UsersRound,
+  Compass,
+  UserRound,
+  Settings,
+  ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Plus,
+  Copy,
+  Share2,
+  X,
+  Check,
+  CircleCheck,
+  CircleX,
+  Send,
+  Trash2,
+  Grip,
+  Minus,
+  Maximize,
+  Minimize,
+  MoveUpRight,
+  Ellipsis,
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  ScreenShare,
+  Music2,
+  Image,
+  PanelsRightBottom,
+  AlertCircle,
+  LoaderCircle,
+  Timer,
+  ListChecks,
+  MessageCircle,
+  Clock,
+  PictureInPicture2,
+  Play,
+  Pause,
+  RotateCcw,
+} from '@lucide/vue';
 
 const Unavailable = defineComponent({
   setup: () => () => h('p', { role: 'status' }, 'This panel is temporarily unavailable.'),
@@ -64,19 +134,31 @@ export const UiExtensionHost = defineComponent({
       );
   },
 });
+/** Feature renderers may contribute to their existing tile header without a second owner. */
+export const workspaceHeaderKey: InjectionKey<ComputedRef<HTMLElement | undefined>> =
+  Symbol('workspace-header');
 export const WorkspaceTileView = defineComponent({
   props: {
     registry: { type: Object as PropType<TileRegistry>, required: true },
     instance: { type: Object as PropType<TileInstance>, required: true },
+    revision: { type: Number, default: 0 },
+    headerTarget: { type: Object as PropType<HTMLElement>, default: undefined },
     can: { type: Function as PropType<(permission: string) => boolean>, default: () => false },
   },
   setup(props) {
+    provide(
+      workspaceHeaderKey,
+      computed(() => props.headerTarget),
+    );
     const renderers = new Map<string, Component>();
     return () => {
+      void props.revision;
       const definition = props.registry.get(props.instance.type);
       if (
         !definition ||
-        props.instance.layout.minimized ||
+        (props.instance.layout.minimized &&
+          !definition.workspaceCard &&
+          !definition.retainOnMinimize) ||
         (definition.permission && !props.can(definition.permission))
       )
         return null;
@@ -86,7 +168,7 @@ export const WorkspaceTileView = defineComponent({
         {
           'aria-label': definition.label,
           'data-tile-id': props.instance.id,
-          hidden: props.instance.layout.minimized,
+          hidden: props.instance.layout.minimized && !definition.minimizedPresentation,
         },
         [
           h(ContributionBoundary, {

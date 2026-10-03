@@ -1,0 +1,109 @@
+{
+  "date": "2026-09-20",
+  "source": "tests/browser/room-browse.spec.ts; local HTTPS smoke",
+  "browser": "Chromium on Windows; emulated viewports",
+  "screenshots": [
+    {
+      "file": "desktop-create-preview.png",
+      "width": 1280,
+      "height": 1104,
+      "sha256": "78ef0810081783401dab36890718fe7ea14e3471511ece46336f1bce78ad620f"
+    },
+    {
+      "file": "desktop-discover.png",
+      "width": 1440,
+      "height": 1094,
+      "sha256": "55aaed361e487deb987a43ea74cf3758a417ba2172d347a462497f450cdbfc97"
+    },
+    {
+      "file": "desktop-friend-selected.png",
+      "width": 1280,
+      "height": 1056,
+      "sha256": "c05f4a1890df77ae5a5393a5f73cff6741c77dfd94cf503ed2822d8ab35bb506"
+    },
+    {
+      "file": "desktop-friends.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "866999a42c3436a39542960d6892b946656698ebce8ea13eba82eaf6255e6017"
+    },
+    {
+      "file": "desktop-home.png",
+      "width": 1440,
+      "height": 1246,
+      "sha256": "008b54b3bccd7ed70252887edef79010bdd006c2d77c49696d30ca91f39c1958"
+    },
+    {
+      "file": "desktop-my-rooms.png",
+      "width": 1440,
+      "height": 1073,
+      "sha256": "75191860f6f099f946834c0f02d60a053c6e521fd006b0c353fdb85c584d3c50"
+    },
+    {
+      "file": "desktop-room-management.png",
+      "width": 1280,
+      "height": 934,
+      "sha256": "50dd9776d7384d0655e5521a2e411108ef43e02a5192be4effaeaf3f729b9494"
+    },
+    {
+      "file": "local-stack-home.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "1eb05407f380341d95c8f8117279e0247719cbb58301ed7561fd5b90d1b91b28"
+    },
+    {
+      "file": "mobile-friend-selected.png",
+      "width": 390,
+      "height": 1218,
+      "sha256": "b686d587f33ee108977c3acf000eac5546daf22e8dc90746e5b1474e208c1691"
+    },
+    {
+      "file": "mobile-home.png",
+      "width": 390,
+      "height": 3290,
+      "sha256": "3a5d32bc227eef72897725db9bffc487eee82ce288261e9801c2844347d7a448"
+    },
+    {
+      "file": "mobile-my-rooms.png",
+      "width": 390,
+      "height": 2558,
+      "sha256": "507d245cf3ffe43bb38604b57cec033be2958d09516022fc7c13802d255d578f"
+    },
+    {
+      "file": "small-home.png",
+      "width": 320,
+      "height": 3339,
+      "sha256": "d826fe7eafcef7419247be5e096021af8b6a61ccd802aaf4c931a1660aa5ce39"
+    },
+    {
+      "file": "small-my-rooms.png",
+      "width": 320,
+      "height": 2637,
+      "sha256": "5e817597186cc75d95837ed05c1b7cbaa06c37a4102e1e11c4225e59bb63c7cc"
+    },
+    {
+      "file": "tablet-home.png",
+      "width": 820,
+      "height": 1973,
+      "sha256": "63c85514320d891d65a8ec7ad18c5fb26c07c579d3c513a1021d4693520468a0"
+    },
+    {
+      "file": "tablet-my-rooms.png",
+      "width": 820,
+      "height": 1447,
+      "sha256": "c5050ceece227df6aff801d218d493d62b5db66f323ec4adee83b4ec25856585"
+    },
+    {
+      "file": "ultrawide-home.png",
+      "width": 3440,
+      "height": 1440,
+      "sha256": "573cecdceee06c4021f5a59e9d7fe1e328bda5792d02be5980d5f503430eb966"
+    },
+    {
+      "file": "ultrawide-my-rooms.png",
+      "width": 3440,
+      "height": 1440,
+      "sha256": "9145076071cd213aede7089bddc616c57eb37c3ab5c8f4f1a4010ceb0af00322"
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import { createOAuthProvider } from '@study/adapters/oauth';
 import { PostgresSessionDirectory } from '@study/adapters/postgres';
 import { identityModule, identityAccounts } from '@study/identity/server';
-import { roomsModule } from '@study/rooms/server';
+import { roomsModule, referralAttribution } from '@study/rooms/server';
+import { backgroundPreviews } from '@study/backgrounds/server';
 import { fail, featureEnabled } from './module-support.ts';
 import type { Database } from '@study/feature-sdk';
 import type { SocialDirectory } from '@study/feature-sdk';
@@ -11,6 +12,7 @@ export function identityModules(
   environment: Record<string, string | undefined>,
   origin: string,
   social?: SocialDirectory,
+  presence?: import('@study/feature-sdk').PresenceDirectory,
 ) {
   const enabled = featureEnabled(environment, 'IDENTITY_ROOMS_ENABLED');
   const providers = (['google', 'microsoft', 'discord'] as const).flatMap((id) => {
@@ -33,14 +35,28 @@ export function identityModules(
     ];
   });
   return [
-    identityModule({ db, directory: new PostgresSessionDirectory(db), providers, fail, enabled }),
+    identityModule({
+      db,
+      directory: new PostgresSessionDirectory(db),
+      providers,
+      fail,
+      enabled,
+      referrals: referralAttribution(db),
+    }),
     roomsModule({
       db,
+      ...(environment.ROOM_INVITE_ENCRYPTION_KEY
+        ? { inviteKey: environment.ROOM_INVITE_ENCRYPTION_KEY }
+        : {}),
       accountExists: identityAccounts(db).exists,
       fail,
       enabled,
       ...(social ? { social } : {}),
       socialEnabled: featureEnabled(environment, 'SOCIAL_ENABLED'),
+      ...(presence && featureEnabled(environment, 'SOCIAL_ENABLED') ? { presence } : {}),
+      ...(environment.BACKGROUNDS_ENABLED !== 'false'
+        ? { backgrounds: backgroundPreviews(db) }
+        : {}),
     }),
   ];
 }

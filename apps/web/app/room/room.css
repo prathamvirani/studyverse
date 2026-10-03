@@ -3,7 +3,7 @@
   inset: 0;
   height: 100dvh;
   overflow: hidden;
-  color: #f4eee0;
+  color: var(--text-primary);
   color-scheme: dark;
   font-size: 14px;
   isolation: isolate;
@@ -17,7 +17,7 @@
   margin: 0;
 }
 .room-shell p {
-  color: #d3d8cc;
+  color: var(--text-secondary);
 }
 .room-shell button {
   background: transparent;
@@ -36,7 +36,7 @@
   cursor: default;
 }
 .room-shell :focus-visible {
-  outline: 2px solid #f4d496;
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 .room-scene {
@@ -55,17 +55,17 @@
   background: #20343c;
 }
 .glass {
-  background: #20343cd9;
-  border: 1px solid #eee4c129;
-  box-shadow: 0 8px 30px #07121924;
-  backdrop-filter: blur(18px);
+  background: var(--glass);
+  border: 1px solid var(--border-highlight);
+  box-shadow: var(--shadow-surface);
+  backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
 }
 .room-shell button.glass {
-  background: #20343ce8;
+  background: var(--glass-elevated);
 }
 .room-shell button.glass:hover {
-  background: #30444cf2;
+  background: var(--surface-elevated);
 }
 .room-top {
   position: absolute;
@@ -83,10 +83,7 @@
   min-width: 0;
 }
 .room-title h1 {
-  font:
-    500 14px/1.4 ui-sans-serif,
-    system-ui,
-    sans-serif;
+  font: 500 14px/1.4 var(--font-ui);
   letter-spacing: 0;
   margin: 0;
   overflow: hidden;
@@ -148,9 +145,7 @@
   background: linear-gradient(135deg, #d9ac7d, #735650);
   color: #fff6e8;
   border-radius: 50%;
-  font:
-    500 16px Georgia,
-    serif;
+  font: 500 16px var(--font-ui);
 }
 .participant-entry:nth-child(2) .participant-avatar {
   background: linear-gradient(135deg, #a4b5a0, #42625c);
@@ -338,9 +333,7 @@
   color: #eedebd;
 }
 .scene-caption p {
-  font:
-    italic 27px Georgia,
-    serif;
+  font: italic 27px var(--font-display);
   color: #f3e7ce;
   margin-top: 12px;
 }
@@ -421,11 +414,6 @@
 }
 .workspace-tile .tile-resize {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  padding: 5px;
-  min-height: 24px;
-  cursor: nwse-resize;
   touch-action: none;
 }
 .workspace-restores {
@@ -437,7 +425,7 @@
   pointer-events: auto;
 }
 .workspace-restores button {
-  background: #20343ce8;
+  background: var(--glass-elevated);
   border: 1px solid #b2c6b85c;
 }
 .workspace-surface:has(.tile-fullscreen) {
@@ -459,12 +447,14 @@
   justify-content: center;
   text-align: center;
   gap: 12px;
-  background: radial-gradient(ellipse at top, #63776c70, transparent);
+  background: radial-gradient(
+    ellipse at top,
+    rgb(99 119 108 / var(--manual-fill, 44%)),
+    transparent
+  );
 }
 .workspace-guide h3 {
-  font:
-    italic 22px Georgia,
-    serif;
+  font: italic 22px var(--font-display);
   margin: 0;
 }
 .workspace-guide p {

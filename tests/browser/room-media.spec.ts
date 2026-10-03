@@ -1,9 +1,12 @@
+import { providerMock } from './media-provider.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 async function login(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Continue with Google' }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
 }
 async function post(page: Page, path: string, body: object) {
   return page.evaluate(
@@ -26,85 +29,9 @@ async function snapshot(page: Page, roomId: string) {
   );
 }
 async function enter(page: Page, roomId: string) {
-  await page.goto('/rooms/' + roomId);
+  await page.goto('/rooms/' + roomId + '/configure');
   await page.getByRole('button', { name: /^(Enter|Join) room$/ }).click();
   await expect(page.getByRole('button', { name: 'Media', exact: true })).toBeVisible();
-}
-async function providerMock(page: Page) {
-  // Explicit deterministic provider mock. This tests application synchronization, not YouTube playback.
-  await page.route('https://www.youtube.com/**', (route) =>
-    route.fulfill({
-      contentType: 'text/html',
-      body: '<!doctype html><title>Deterministic provider fixture</title>',
-    }),
-  );
-  await page.addInitScript(() => {
-    const w = window as unknown as {
-      YT: unknown;
-      mediaTest: { position: () => number; volume: () => number; destroyed: boolean }[];
-    };
-    w.mediaTest = [];
-    w.YT = {
-      Player: class {
-        p = 0;
-        t = Date.now();
-        running = false;
-        speed = 1;
-        v = 100;
-        destroyed = false;
-        constructor(_element: HTMLElement, options: { events: { onReady: () => void } }) {
-          w.mediaTest.push({
-            position: () => this.getCurrentTime(),
-            volume: () => this.v,
-            get destroyed() {
-              return false;
-            },
-          });
-          setTimeout(() => options.events.onReady(), 10);
-        }
-        cueVideoById(_id: string, start: number) {
-          this.p = start;
-          this.t = Date.now();
-          this.running = false;
-        }
-        playVideo() {
-          if (!this.running) {
-            this.t = Date.now();
-            this.running = true;
-          }
-        }
-        pauseVideo() {
-          this.p = this.getCurrentTime();
-          this.running = false;
-        }
-        seekTo(value: number) {
-          this.p = value;
-          this.t = Date.now();
-        }
-        setPlaybackRate(value: number) {
-          this.p = this.getCurrentTime();
-          this.t = Date.now();
-          this.speed = value;
-        }
-        getAvailablePlaybackRates() {
-          return [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-        }
-        setVolume(value: number) {
-          this.v = value;
-        }
-        getCurrentTime() {
-          return this.p + (this.running ? ((Date.now() - this.t) / 1000) * this.speed : 0);
-        }
-        getPlayerState() {
-          return this.running ? 1 : 2;
-        }
-        destroy() {
-          this.destroyed = true;
-          this.pauseVideo();
-        }
-      },
-    };
-  });
 }
 test('room media: real control plane, deterministic provider sync, local mixing, queue and responsive workspace', async ({
   browser,
@@ -125,29 +52,30 @@ test('room media: real control plane, deterministic provider sync, local mixing,
       .body;
     await enter(owner, room.id);
     await owner.getByRole('button', { name: 'Media', exact: true }).click();
-    const panel = owner.getByRole('dialog', { name: 'Room media' });
+    const surface = owner.locator('.media-compact');
+    await surface.getByLabel('YouTube URL').fill('https://music.youtube.com/watch?v=M7lc1UVf-VE');
+    await surface.getByRole('button', { name: 'Play', exact: true }).click();
+    await expect(owner.locator('.youtube-host iframe')).toHaveCount(1);
+    await owner.getByRole('button', { name: 'Media', exact: true }).click();
+    await expect(surface.locator('.media-queue')).toContainText('YouTube Developers Live');
+    await expect(surface.locator('.media-queue')).not.toContainText('M7lc1UVf-VE');
+    await expect(surface.getByRole('button', { name: 'Pause room', exact: true })).toBeVisible();
+    await owner.getByRole('button', { name: 'Media settings', exact: true }).click();
+    const panel = owner.getByRole('dialog', { name: 'Media settings' });
     await expect(panel.getByText('You can control room playback.', { exact: false })).toBeVisible();
-    await panel
-      .getByLabel('YouTube video or Music link')
-      .fill('https://music.youtube.com/watch?v=M7lc1UVf-VE');
-    await panel.getByRole('button', { name: 'Add to room', exact: true }).click();
-    await expect(panel.locator('.media-queue')).toContainText('M7lc1UVf-VE');
-    await panel.getByRole('button', { name: 'Play room', exact: true }).click();
-    await expect(panel.getByRole('button', { name: 'Pause room', exact: true })).toBeVisible();
+    await panel.getByText('Playback diagnostics', { exact: true }).click();
     await panel.getByLabel('Seek seconds').fill('90');
     await panel.getByRole('button', { name: 'Apply seek' }).click();
     await expect.poll(async () => (await snapshot(owner, room.id)).state.position).toBe(90);
     await owner.screenshot({ path: '.local/validation/phase08-media-desktop.png' });
-    await panel.getByRole('button', { name: 'Open YouTube tile' }).click();
-    await owner.getByRole('button', { name: 'Enable YouTube', exact: true }).click();
+    await panel.getByRole('button', { name: 'Close media settings', exact: true }).click();
     await expect(owner.locator('.youtube-host iframe')).toHaveCount(1);
     await login(member);
     await enter(member, room.id);
     await member.getByRole('button', { name: 'Media', exact: true }).click();
-    const memberPanel = member.getByRole('dialog', { name: 'Room media' });
+    const memberPanel = member.locator('.media-compact');
     await expect(memberPanel.getByRole('button', { name: 'Suggest Pause room' })).toBeVisible();
-    await memberPanel.getByRole('button', { name: 'Open YouTube tile' }).click();
-    await member.getByRole('button', { name: 'Enable YouTube', exact: true }).click();
+    await memberPanel.getByRole('button', { name: 'Show video' }).click();
     const position = (page: Page) =>
       page.evaluate(() => {
         const w = window as unknown as { mediaTest: { position: () => number }[] };
@@ -160,11 +88,17 @@ test('room media: real control plane, deterministic provider sync, local mixing,
       .toBeLessThan(2);
     expect(await position(member)).toBeGreaterThanOrEqual(90);
     await member.getByRole('button', { name: 'Media', exact: true }).click();
+    await memberPanel
+      .getByRole('radiogroup', { name: 'Media scope' })
+      .getByRole('radio', { name: 'Personal', exact: true })
+      .click();
     const before = await snapshot(member, room.id);
     await memberPanel.getByLabel('My room music level').fill('0.2');
     await memberPanel.getByLabel('Mute room media locally').check();
-    await memberPanel.getByRole('button', { name: 'Enable ambience' }).click();
-    await memberPanel.getByLabel('Ambience source').selectOption('personal');
+    await memberPanel.getByRole('combobox', { name: 'Ambience source' }).click();
+    await member.getByRole('option', { name: 'Personal ambience', exact: true }).click();
+    await memberPanel.getByRole('button', { name: 'Add ambience', exact: true }).click();
+    await memberPanel.getByRole('button', { name: /Brown noise Low/ }).click();
     await memberPanel.getByLabel('My Brown noise', { exact: true }).fill('0.4');
     const after = await snapshot(member, room.id);
     expect(after.version).toBe(before.version);
@@ -175,10 +109,16 @@ test('room media: real control plane, deterministic provider sync, local mixing,
     await member.keyboard.press('Escape');
     await expect(member.getByRole('button', { name: 'Media', exact: true })).toBeFocused();
     await member.reload();
-    await member.getByRole('button', { name: 'Enter room', exact: true }).click();
+    await expect(member.locator('.room-dock')).toBeVisible();
     await member.getByRole('button', { name: 'Media', exact: true }).click();
+    await memberPanel
+      .getByRole('radiogroup', { name: 'Media scope' })
+      .getByRole('radio', { name: 'Personal', exact: true })
+      .click();
     await expect(memberPanel.getByLabel('Mute room media locally')).toBeChecked();
-    await expect(memberPanel.getByLabel('Ambience source')).toHaveValue('personal');
+    await expect(memberPanel.getByRole('combobox', { name: 'Ambience source' })).toContainText(
+      'Personal ambience',
+    );
     await expect(memberPanel.getByLabel('My Brown noise', { exact: true })).toHaveValue('0.4');
     await expect(memberPanel.getByRole('button', { name: 'Suggest Pause room' })).toBeVisible();
     await member.setViewportSize({ width: 820, height: 1180 });
@@ -209,8 +149,9 @@ test('room media: real control plane, deterministic provider sync, local mixing,
 
 test('real YouTube embed probe records provider outcome without fabricating playback', async ({
   page,
+  browser,
 }) => {
-  test.setTimeout(60000);
+  test.setTimeout(140000);
   const providerErrors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') providerErrors.push(message.text().slice(0, 300));
@@ -220,7 +161,7 @@ test('real YouTube embed probe records provider outcome without fabricating play
   });
   await login(page);
   const room = (
-    await post(page, 'rooms/create', { name: 'Provider availability probe', privacy: 'private' })
+    await post(page, 'rooms/create', { name: 'Provider availability probe', privacy: 'public' })
   ).body;
   await enter(page, room.id);
   let v = await snapshot(page, room.id);
@@ -240,15 +181,25 @@ test('real YouTube embed probe records provider outcome without fabricating play
   });
   expect(result.status).toBe(200);
   await page.getByRole('button', { name: 'Media', exact: true }).click();
-  await expect(page.locator('.media-queue')).toContainText('M7lc1UVf-VE');
+  await expect(page.locator('.media-queue')).toContainText('YouTube Developers Live');
   await expect(page.getByRole('button', { name: 'Pause room', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Open YouTube tile' }).click();
-  await page.getByRole('button', { name: 'Enable YouTube', exact: true }).click();
+  await page.getByRole('button', { name: 'Show video' }).click();
   await expect(page.getByRole('button', { name: 'Connecting…', exact: true })).toHaveCount(0, {
     timeout: 35000,
   });
   const tile = page.locator('.room-video');
   await expect(tile).not.toContainText('Add a room video');
+  // A second real embed uses the same application authority; provider failures
+  // are recorded as limitations rather than substituted with a mock player.
+  const remoteContext = await browser.newContext({ ignoreHTTPSErrors: true });
+  const remote = await remoteContext.newPage();
+  await login(remote);
+  await enter(remote, room.id);
+  await remote.getByRole('button', { name: 'Media', exact: true }).click();
+  await remote.getByRole('button', { name: 'Show video', exact: true }).click();
+  await expect(remote.getByRole('button', { name: 'Connecting…', exact: true })).toHaveCount(0, {
+    timeout: 35000,
+  });
   // Give the real player a bounded chance to advance; timeout is recorded as a limitation.
   await page
     .waitForFunction(
@@ -259,14 +210,54 @@ test('real YouTube embed probe records provider outcome without fabricating play
     .catch(() => {});
   // A provider failure is a measured limitation, never a successful-playback assertion.
   await expect(tile).toBeVisible();
+  let minimizedAdvanced: boolean | null = null;
+  const originalFrame = await page.locator('.youtube-host iframe').elementHandle();
+  if ((await tile.getAttribute('data-player-state')) === 'playing') {
+    const before = Number(await tile.getAttribute('data-player-position'));
+    await page
+      .locator('.workspace-tile')
+      .filter({ has: tile })
+      .getByRole('button', { name: 'Minimize tile' })
+      .click();
+    minimizedAdvanced = await page
+      .waitForFunction(
+        (position) =>
+          Number(document.querySelector('.room-video')?.getAttribute('data-player-position')) >
+          position + 5,
+        before,
+        { timeout: 15000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
+    await page
+      .locator('.workspace-tile')
+      .filter({ has: tile })
+      .getByRole('button', { name: 'Open player', exact: true })
+      .click();
+  }
+  const sameIframe =
+    !!originalFrame &&
+    (await originalFrame.evaluate((el) => el === document.querySelector('.youtube-host iframe')));
+  expect(sameIframe).toBe(true);
   const outcome = {
     providerErrors,
+    minimizedAdvanced,
+    sameIframe,
     state: await tile.getAttribute('data-player-state'),
     position: await tile.getAttribute('data-player-position'),
     message: await tile.innerText(),
+    remote: {
+      state: await remote.locator('.room-video').getAttribute('data-player-state'),
+      position: await remote.locator('.room-video').getAttribute('data-player-position'),
+      message: await remote.locator('.room-video').innerText(),
+      iframeCount: await remote.locator('.youtube-host iframe').count(),
+    },
   };
   const { writeFile } = await import('node:fs/promises');
   await writeFile('.local/validation/phase08-real-youtube.json', JSON.stringify(outcome, null, 2));
   await page.screenshot({ path: '.local/validation/phase08-real-youtube.png' });
   await expect(page.getByRole('button', { name: 'Media', exact: true })).toBeVisible();
+  await remoteContext.close();
 });

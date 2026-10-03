@@ -1,16 +1,22 @@
 import { csrfResponseSchema } from '@study/contracts';
 import type { z } from '@study/contracts';
 
+export class ApiError extends Error {
+  constructor(readonly status: number) {
+    super(`Request failed (${status})`);
+  }
+}
+
 /** Per-client closure, never Nuxt SSR global state or a persisted browser store. */
 export function createApiClient(fetcher: typeof fetch = fetch) {
   let csrf: string | undefined;
   return {
     async authentication<T>(
-      path: `/api/v1/account/${string}`,
+      path: `/api/v1/account/${string}` | '/api/v1/rooms/referral-land',
       schema: z.ZodType<T>,
       input: unknown,
     ): Promise<T> {
-      if (!/^\/api\/v1\/account\/[a-z-]+$/.test(path))
+      if (!/^\/api\/v1\/account\/[a-z-]+$/.test(path) && path !== '/api/v1/rooms/referral-land')
         throw new Error('Invalid authentication path');
       const csrfResponse = await fetcher('/api/v1/session/csrf', {
         credentials: 'same-origin',
@@ -31,7 +37,7 @@ export function createApiClient(fetcher: typeof fetch = fetch) {
         body: JSON.stringify(input),
       });
       csrf = undefined;
-      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      if (!response.ok) throw new ApiError(response.status);
       return schema.parse(await response.json());
     },
     async request<T>(path: `/api/v1/${string}`, schema: z.ZodType<T>, input?: unknown): Promise<T> {
@@ -58,7 +64,7 @@ export function createApiClient(fetcher: typeof fetch = fetch) {
       });
       if (!response.ok) {
         if ([401, 403].includes(response.status)) csrf = undefined;
-        throw new Error(`Request failed (${response.status})`);
+        throw new ApiError(response.status);
       }
       return schema.parse(await response.json());
     },

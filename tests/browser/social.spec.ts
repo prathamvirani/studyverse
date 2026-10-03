@@ -1,9 +1,12 @@
+import { hideWorkspaceCards } from './room-settings.ts';
+import { finishOnboarding } from './onboarding.ts';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 async function login(page: Page, provider: string) {
   await page.goto('/');
   await page.getByRole('button', { name: `Continue with ${provider}` }).click();
-  await expect(page).toHaveURL('/account');
+  await finishOnboarding(page);
+  await page.goto('/account');
 }
 async function api(page: Page, path: string, input?: unknown) {
   return page.evaluate(
@@ -80,8 +83,8 @@ test('live participant menus, Friends, privacy and targeted invitation across tw
         await api(page, 'friends/decline', { targetId });
     }
     const room = await api(alice, 'rooms/create', { name: 'The quiet hours', privacy: 'public' });
-    await alice.goto(`/rooms/${room.id}`);
-    await bob.goto(`/rooms/${room.id}`);
+    await alice.goto(`/rooms/${room.publicId}/configure`);
+    await bob.goto(`/rooms/${room.publicId}/configure`);
     await alice.getByRole('button', { name: 'Enter room', exact: true }).click();
     await bob.getByRole('button', { name: 'Join room', exact: true }).click();
     await expect(alice.locator(`#participant-${userB.id}`)).toBeVisible();
@@ -92,27 +95,28 @@ test('live participant menus, Friends, privacy and targeted invitation across tw
     await bob.goto('/friends');
     await expect(bob.getByRole('heading', { name: 'Friend requests', exact: true })).toBeVisible();
     await bob.getByRole('button', { name: 'Accept', exact: true }).click();
-    await expect(bob.getByRole('heading', { name: 'Alex', exact: true })).toBeVisible();
-    await bob.goto(`/rooms/${room.id}`);
+    await bob.getByRole('button', { name: /Alex/ }).click();
+    await expect(bob.getByRole('heading', { name: /^Alex(?: · .+)?$/ })).toBeVisible();
+    await bob.goto(`/rooms/${room.publicId}/configure`);
     await bob.getByRole('button', { name: 'Enter room', exact: true }).click();
     await bob.locator('#participant-self').click();
-    await bob
-      .getByLabel('Your status', { exact: true })
-      .selectOption('focusing', { timeout: 5000 });
+    await bob.getByRole('combobox', { name: 'Your status', exact: true }).click();
+    await bob.getByRole('option', { name: 'Focusing', exact: true }).click();
     await expect(alice.locator(`#participant-${userB.id}`)).toHaveAttribute('title', /Focusing/);
     await alice.getByRole('button', { name: 'Close participant controls' }).click();
     await alice.screenshot({ path: '.local/validation/phase03-presence-desktop.png' });
     await alice.setViewportSize({ width: 768, height: 1024 });
     await alice.screenshot({ path: '.local/validation/phase03-presence-tablet.png' });
     await alice.setViewportSize({ width: 390, height: 844 });
-    await alice.getByRole('button', { name: 'Hide panels' }).click();
+    await hideWorkspaceCards(alice);
     await alice.screenshot({ path: '.local/validation/phase03-presence-mobile.png' });
     expect(await alice.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
     await alice.goto('/friends');
     await alice.setViewportSize({ width: 1440, height: 900 });
-    await expect(alice.getByRole('heading', { name: 'Sam', exact: true })).toBeVisible();
+    await alice.getByRole('button', { name: /Sam/ }).click();
+    await expect(alice.getByRole('heading', { name: /^Sam(?: · .+)?$/ })).toBeVisible();
     await alice.screenshot({
       path: '.local/validation/phase03-friends-desktop.png',
       fullPage: true,
@@ -128,10 +132,14 @@ test('live participant menus, Friends, privacy and targeted invitation across tw
     await bob.goto('/friends');
     await expect(bob.getByRole('heading', { name: 'Room invitations', exact: true })).toBeVisible();
     await bob.getByRole('button', { name: 'Accept invitation', exact: true }).click();
-    await bob.getByText('Presence & invitation privacy', { exact: true }).click();
+    await bob.getByRole('link', { name: 'Presence & privacy', exact: true }).click();
     await bob.getByLabel('Show online presence', { exact: true }).uncheck();
     await bob.getByRole('button', { name: 'Save privacy' }).click();
-    await expect(alice.getByText('Presence private', { exact: true })).toBeVisible();
+    await expect(
+      alice
+        .getByRole('region', { name: 'Selected friend' })
+        .getByRole('heading', { name: 'Sam · Presence private', exact: true }),
+    ).toBeVisible();
     await alice.setViewportSize({ width: 390, height: 844 });
     await alice.screenshot({
       path: '.local/validation/phase03-friends-mobile.png',
@@ -141,8 +149,9 @@ test('live participant menus, Friends, privacy and targeted invitation across tw
       true,
     );
     await alice.getByRole('button', { name: 'Block', exact: true }).click();
-    await expect(alice.getByRole('heading', { name: 'Sam', exact: true })).toHaveCount(0);
-    await alice.getByText('Blocked people (1)', { exact: true }).click();
+    await expect(alice.getByRole('heading', { name: /^Sam(?: · .+)?$/ })).toHaveCount(0);
+    await alice.goto('/account');
+    await expect(alice.getByRole('heading', { name: 'Blocked people', exact: true })).toBeVisible();
     await alice.getByRole('button', { name: 'Unblock', exact: true }).click();
     expect(pageErrors).toEqual([]);
   } finally {

@@ -1,0 +1,14 @@
+{
+  "platform": "linux-firefox",
+  "runtime": {
+    "secure": true,
+    "passkeys": true,
+    "pip": true,
+    "sharing": false,
+    "fonts": [true, true],
+    "ua": "Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0"
+  },
+  "widths": [1440, 2560, 768, 390, 320],
+  "errors": [],
+  "unnamed": []
+}

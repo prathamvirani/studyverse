@@ -3,6 +3,8 @@ import {
   csrfResponseSchema,
   emptySchema,
   healthSchema,
+  realtimeUnsubscribeSchema,
+  okSchema,
 } from '@study/contracts';
 import { defineOperation } from '@study/feature-sdk';
 import type { FeatureModule } from '@study/feature-sdk';
@@ -31,6 +33,19 @@ export function foundationModule(
       },
     ],
     operations: [
+      defineOperation({
+        id: 'foundation.unsubscribe',
+        kind: 'command',
+        input: realtimeUnsubscribeSchema,
+        output: okSchema,
+        access: {
+          permission: 'foundation.session.read',
+          resource: async (_, c) =>
+            c.actor ? { id: c.actor.sessionId, ownerId: c.actor.subjectId } : null,
+        },
+        rate,
+        handle: async () => ({ ok: true }),
+      }),
       defineOperation({
         id: 'foundation.health',
         kind: 'query',
@@ -92,5 +107,6 @@ export function foundationModule(
       },
       { method: 'GET', path: '/api/v1/session/csrf', operation: 'foundation.csrf', input: 'query' },
     ],
+    realtime: [{ command: 'foundation.unsubscribe', operation: 'foundation.unsubscribe' }],
   };
 }

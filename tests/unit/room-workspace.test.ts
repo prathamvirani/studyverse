@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { createSSRApp, h } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { layoutSchema } from '@study/contracts';
-import { TileRegistry, Workspace, workspaceSchema } from '@study/core/browser';
+import { TileRegistry, Workspace, workspaceSchema, rectanglesOverlap } from '@study/core/browser';
 import { WorkspaceTileView } from '@study/ui';
 import type { Database, TileDefinition } from '@study/feature-sdk';
 import { createRoomComposition } from '../../apps/web/app/room/composition.ts';
@@ -26,6 +26,71 @@ function fixture(overrides: Partial<TileDefinition> = {}) {
   return new Workspace(types);
 }
 const bounds = { width: 900, height: 600 };
+it('derives snap columns from current chrome and preserves the preview through drop and reflow', () => {
+  const ws = fixture({
+    workspaceCard: true,
+    minimumSize: { width: 160, height: 260 },
+    defaultSize: { width: 300, height: 300 },
+  });
+  const card = ws.open('fixture.tile', 'dynamic');
+  const pill = { x: 760, y: 0, width: 130, height: 44 };
+  const dock = { x: 300, y: 524, width: 300, height: 68 };
+  const initial = ws.snapSlots(bounds, [dock]);
+  const moved = ws.snapSlots(bounds, [pill, dock]);
+  expect(moved).not.toEqual(initial);
+  for (const rect of moved)
+    for (const obstacle of [pill, dock]) expect(rectanglesOverlap(rect, obstacle, 7)).toBe(false);
+  for (const index of [0, 1, 0]) {
+    const preview = ws.snapTarget(card.id, index, bounds, [pill, dock])!;
+    ws.snap(card.id, index, bounds, [pill, dock]);
+    ws.reflow(bounds, [pill, dock]);
+    expect(card.layout).toMatchObject(preview.rect);
+    expect(ws.snaps.get(card.id)).toBe(preview.index);
+  }
+  const before = { ...card.layout };
+  ws.unsnap(card.id);
+  ws.place(card.id, { x: 180, y: 190, width: 260, height: 270 }, bounds, false);
+  const free = { ...card.layout };
+  ws.reflow(bounds, [dock]);
+  expect(card.layout).toEqual(free);
+  expect(card.layout).not.toEqual(before);
+});
+it('persists independent card snaps, displaces occupants, unsnaps and recovers shrinking viewports', () => {
+  const ws = fixture({ workspaceCard: true });
+  const a = ws.open('fixture.tile', 'a'),
+    b = ws.open('fixture.tile', 'b');
+  ws.snap(a.id, 0, bounds);
+  ws.snap(b.id, 0, bounds);
+  expect(ws.snaps.has(a.id)).toBe(false);
+  expect(ws.snaps.get(b.id)).toBe(0);
+  ws.snap(a.id, 2, bounds);
+  const next = fixture({ workspaceCard: true });
+  next.recover(
+    { panels: {}, dimmed: false, tiles: ws.snapshot(), snaps: Object.fromEntries(ws.snaps) },
+    bounds,
+  );
+  expect(next.snaps.get(a.id)).toBe(2);
+  next.reflow({ width: 240, height: 250 });
+  expect(next.snaps.has(a.id)).toBe(false);
+  for (const tile of next.values()) {
+    expect(tile.layout.x + tile.layout.width).toBeLessThanOrEqual(240);
+    expect(tile.layout.y + tile.layout.height).toBeLessThanOrEqual(250);
+  }
+  next.unsnap(b.id);
+  expect(next.snaps.size).toBe(0);
+});
+it('shrinks the snap column to the real narrow rail gap instead of covering primary controls', () => {
+  const ws = fixture({ workspaceCard: true, minimumSize: { width: 220, height: 120 } });
+  const card = ws.open('fixture.tile', 'narrow');
+  const narrow = { width: 366, height: 824 };
+  const rail = { x: 0, y: 50, width: 72, height: 774 };
+  const header = { x: 0, y: 0, width: 366, height: 44 };
+  const preview = ws.snapTarget(card.id, 0, narrow, [rail, header])!;
+  expect(preview.rect).toMatchObject({ x: 80, y: 52, width: 286 });
+  ws.snap(card.id, 0, narrow, [rail, header]);
+  expect(card.layout).toMatchObject(preview.rect);
+  expect(rectanglesOverlap(card.layout, rail, 7)).toBe(false);
+});
 it('runs independent tile lifecycle, stacking, minimize/restore and fullscreen', () => {
   const onOpen = vi.fn(),
     onClose = vi.fn(),
@@ -159,7 +224,7 @@ it('renders exactly one mock camera through expand, minimize, restore, close and
   p.camera = false;
   expect(await count()).toBe(0);
 });
-it('defers Microsoft by default without introducing any account-deletion route', async () => {
+it('defers Microsoft by default and keeps MID-02 deletion scoped to authenticated self', async () => {
   const db = { query: vi.fn(), transaction: vi.fn() } as Database;
   const modules = identityModules(
     db,
@@ -179,7 +244,54 @@ it('defers Microsoft by default without introducing any account-deletion route',
       .filter((route) =>
         /(?:user|account).*(?:delete|remove)|(?:delete|remove).*(?:user|account)/i.test(route.path),
       ),
-  ).toEqual([]);
+  ).toEqual([
+    {
+      method: 'POST',
+      path: '/api/v1/account/delete-account',
+      operation: 'identity.delete-account',
+      input: 'body',
+    },
+  ]);
+  const deletion = modules[0]!.operations!.find((op) => op.id === 'identity.delete-account')!;
+  expect(deletion.access).toMatchObject({ permission: 'identity.self' });
+  expect(deletion.kind).toBe('authentication');
+  expect(deletion.input.safeParse({ confirmation: 'DELETE', userId: 'someone-else' }).success).toBe(
+    false,
+  );
   const shell = await readFile('apps/web/app/components/room/RoomShell.vue', 'utf8');
   expect(shell).not.toMatch(/from .*demo|@study\/(?:identity|rooms)|getUserMedia|getDisplayMedia/);
+});
+
+it('clamps fractional-coordinate resize to an accepted minimum without moving the opposite anchors', () => {
+  const ws = fixture({ minimumSize: { width: 200, height: 200 } });
+  const tile = ws.open('fixture.tile', 'fractional-minimum');
+  const bounds = { width: 1440, height: 1000 };
+  const start = {
+    ...tile.layout,
+    x: 1010.3333333333334,
+    y: 481.3333333333333,
+    width: 320,
+    height: 230.66666666666666,
+  };
+  for (const edge of ['se', 'nw', 'ne', 'sw'] as const) {
+    ws.update(tile.id, start);
+    expect(() =>
+      ws.resize(
+        tile.id,
+        start,
+        edge,
+        edge.includes('w') ? 1000 : -1000,
+        edge.includes('n') ? 1000 : -1000,
+        bounds,
+      ),
+    ).not.toThrow();
+    expect(tile.layout.width).toBeGreaterThanOrEqual(200);
+    expect(tile.layout.width).toBeCloseTo(200, 10);
+    expect(tile.layout.height).toBeGreaterThanOrEqual(200);
+    expect(tile.layout.height).toBeCloseTo(200, 10);
+    if (edge.includes('e')) expect(tile.layout.x).toBe(start.x);
+    else expect(tile.layout.x + tile.layout.width).toBeCloseTo(start.x + start.width, 10);
+    if (edge.includes('s')) expect(tile.layout.y).toBe(start.y);
+    else expect(tile.layout.y + tile.layout.height).toBeCloseTo(start.y + start.height, 10);
+  }
 });

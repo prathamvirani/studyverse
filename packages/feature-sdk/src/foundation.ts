@@ -136,6 +136,8 @@ export interface UiContribution<Renderer = unknown> {
   readonly label: string;
   readonly permission?: string;
   readonly load: () => Promise<Renderer>;
+  /** Optional grouping in the room settings host; the contributing feature owns its controls. */
+  readonly category?: string;
 }
 export interface TileDefinition<Renderer = unknown> {
   readonly type: string;
@@ -153,6 +155,13 @@ export interface TileDefinition<Renderer = unknown> {
   readonly onLayoutChange?: (instanceId: string, layout: TileLayout) => void;
   /** Opt out for ephemeral resources such as a mock/live camera. */
   readonly persist?: boolean;
+  /** Independently visible room card, eligible for the shared snap column. */
+  readonly workspaceCard?: boolean;
+  readonly retainOnMinimize?: boolean;
+  /** Keep a policy-required presentation visible when its larger card is collapsed/closed. */
+  readonly minimizedPresentation?: { readonly width: number; readonly height: number };
+  /** Alternate controller for renderers whose DOM cannot cross documents without a reload. */
+  readonly loadPopout?: () => Promise<Renderer>;
 }
 export interface FeatureModule {
   readonly connectionClosed?: (connectionId: string) => Promise<void>;

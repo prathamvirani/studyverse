@@ -1,6 +1,15 @@
 [extend]
 useDefault = true
 
+# Verified SHA-256 of an inherited validation log, not a credential.
+# Both the exact historical manifest path and exact digest must match.
+[[allowlists]]
+description = "MID-04A security log checksum"
+condition = "AND"
+paths = ['''^docs[/\\]references[/\\]mid04a[/\\]final-polish[/\\]validation\.json$''']
+regexTarget = "secret"
+regexes = ['''^78d9ffa8c5f1f7948a69dfbb5e1df24e99b8534321525653d0f13faed434fae1$''']
+
 [[allowlists]]
 description = "Dependencies, generated builds, local secrets and verified host backups are not source files"
 paths = [

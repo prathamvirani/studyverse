@@ -12,6 +12,7 @@ export function rtcModules(
   db: Database,
   sessions: SessionStore,
   environment: Record<string, string | undefined> = {},
+  accountEvents = false,
 ) {
   const enabled = featureEnabled(environment, 'RTC_ENABLED', false);
   let authority: MediaAuthority = {
@@ -49,6 +50,7 @@ export function rtcModules(
   return [
     rtcModule({
       authority,
+      accountEvents,
       rooms: productivityRooms(db, socialDirectory(db)),
       people: identityAccounts(db),
       blocked: socialDirectory(db).blocked,

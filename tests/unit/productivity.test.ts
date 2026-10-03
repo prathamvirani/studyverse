@@ -78,3 +78,38 @@ it('OpenAPI documents both Personal and Shared query scope without dropping unio
     required: false,
   });
 });
+
+it('stops at the next full segment when auto-start is off and tallies only completed focus sessions', () => {
+  const state = {
+    ...initialTimer(randomUUID(), 1000),
+    running: true,
+    config: {
+      focusSeconds: 60,
+      shortBreakSeconds: 60,
+      longBreakSeconds: 120,
+      cycles: 2,
+      autoStart: false,
+    },
+    remainingMs: 60000,
+  };
+  const stopped = projectTimer(state, 1e12);
+  expect(stopped).toMatchObject({
+    phase: 'shortBreak',
+    cycle: 1,
+    running: false,
+    remainingMs: 60000,
+    focusSessions: 1,
+  });
+  expect(projectTimer(stopped, 1e12 + 100000)).toEqual(stopped);
+  expect(nextPhase(state).focusSessions).toBeUndefined();
+  const continuous = { ...state, config: { ...state.config, autoStart: true } };
+  expect(projectTimer(continuous, 301000)).toMatchObject({
+    phase: 'focus',
+    cycle: 1,
+    focusSessions: 2,
+    remainingMs: 60000,
+  });
+  expect(projectTimer(projectTimer(continuous, 131000), 301000)).toEqual(
+    projectTimer(continuous, 301000),
+  );
+});

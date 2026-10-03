@@ -16,6 +16,10 @@ import {
   socialPrivacySchema,
   socialTargetSchema,
   friendsSnapshotSchema,
+  friendSearchInputSchema,
+  friendSearchSchema,
+  peopleSearchInputSchema,
+  peopleSearchSchema,
   z,
 } from '@study/contracts';
 export const friendsDefinition = {
@@ -78,6 +82,79 @@ export function friendsModule(deps: {
   const rate = { limit: 600, windowMs: 60000 };
   const operations = [
     defineOperation({
+      id: 'friends.find',
+      kind: 'query',
+      input: peopleSearchInputSchema,
+      output: peopleSearchSchema,
+      access,
+      rate: { limit: 20, windowMs: 60000 },
+      handle: async (i, c) => {
+        const a = actor(c),
+          people = [];
+        for (const person of (await deps.people.search?.(i.query)) ?? []) {
+          if (person.id === a || (await social.blocked(a, person.id))) continue;
+          const [relationship] = await db.query(
+            sql`SELECT state,sender_id FROM friends.relationships WHERE low_id=LEAST(${a}::uuid,${person.id}::uuid) AND high_id=GREATEST(${a}::uuid,${person.id}::uuid)`,
+          );
+          const met = !!relationship || (await deps.rooms.shared(a, person.id));
+          if (i.scope === 'met' && !met) continue;
+          if (!relationship && !(await social.privacy(person.id)).invites) continue;
+          people.push({
+            username: person.username,
+            name: person.name,
+            state:
+              relationship?.state === 'accepted'
+                ? ('friends' as const)
+                : relationship
+                  ? relationship.sender_id === a
+                    ? ('outgoing' as const)
+                    : ('incoming' as const)
+                  : ('none' as const),
+          });
+          if (people.length === 20) break;
+        }
+        return { people };
+      },
+    }),
+    defineOperation({
+      id: 'friends.search',
+      kind: 'query',
+      input: friendSearchInputSchema,
+      output: friendSearchSchema,
+      access,
+      rate: { limit: 20, windowMs: 60000 },
+      handle: async (i, c) => {
+        const a = actor(c),
+          person = await deps.people.byUsername?.(i.username);
+        // Exact handles only, restricted to existing relationships or people met in a room.
+        // Unknown, blocked, private and unrelated accounts have the same empty response.
+        if (!person || person.id === a || (await social.blocked(a, person.id)))
+          return { person: null };
+        const [relationship] = await db.query(
+          sql`SELECT state,sender_id FROM friends.relationships WHERE low_id=LEAST(${a}::uuid,${person.id}::uuid) AND high_id=GREATEST(${a}::uuid,${person.id}::uuid)`,
+        );
+        if (
+          !relationship &&
+          (!(await deps.rooms.shared(a, person.id)) || !(await social.privacy(person.id)).invites)
+        )
+          return { person: null };
+        return {
+          person: {
+            username: person.username,
+            name: person.name,
+            state:
+              relationship?.state === 'accepted'
+                ? ('friends' as const)
+                : relationship
+                  ? relationship.sender_id === a
+                    ? ('outgoing' as const)
+                    : ('incoming' as const)
+                  : ('none' as const),
+          },
+        };
+      },
+    }),
+    defineOperation({
       id: 'friends.snapshot',
       kind: 'query',
       input: emptySchema,
@@ -133,17 +210,24 @@ export function friendsModule(deps: {
       defineOperation({
         id: `friends.${action}`,
         kind: 'command',
-        input: socialTargetSchema,
+        input:
+          action === 'request'
+            ? z.union([socialTargetSchema, friendSearchInputSchema])
+            : socialTargetSchema,
         output: okSchema,
         access,
         rate: { limit: action === 'request' ? 10 : 30, windowMs: 60000 },
         handle: async (i, c) => {
-          const a = actor(c),
-            b = i.targetId;
+          const a = actor(c);
+          const resolved = 'username' in i ? await deps.people.byUsername?.(i.username) : null;
+          const b = 'targetId' in i ? i.targetId : resolved?.id;
+          if (!b) return fail('FORBIDDEN');
           if (a === b) return fail('FORBIDDEN');
           await db.transaction(async (tx) => {
             // Serialize social mutations, including opposite-direction requests and block races.
             await tx.query(sql`SELECT pg_advisory_xact_lock(730003)`);
+            if ('username' in i && (await deps.people.byUsername?.(i.username, tx))?.id !== b)
+              return fail('FORBIDDEN');
             const [r] = await tx.query(
               sql`SELECT * FROM friends.relationships WHERE low_id=LEAST(${a}::uuid,${b}::uuid) AND high_id=GREATEST(${a}::uuid,${b}::uuid) FOR UPDATE`,
             );
@@ -171,8 +255,13 @@ export function friendsModule(deps: {
             }
             if (blocked) return fail('FORBIDDEN');
             if (action === 'request') {
-              // No global account search or guessed-ID lookup. Meet in a room first.
-              if (!(await deps.rooms.shared(a, b)) || !(await deps.people.person(b)))
+              // Global username discovery requires invitation consent. UUID requests still require shared context.
+              if (
+                (!('username' in i) && !(await deps.rooms.shared(a, b))) ||
+                !(await deps.people.person(b))
+              )
+                return fail('FORBIDDEN');
+              if ('username' in i && !(await social.privacy(b, tx)).invites)
                 return fail('FORBIDDEN');
               if (r) return fail('CONFLICT');
               const [count] = await tx.query(
@@ -227,11 +316,13 @@ export function friendsModule(deps: {
       operation: op.id,
       input: op.kind === 'query' ? 'query' : 'body',
     })),
-    realtime: operations.map((op) => ({
-      command: op.id,
-      operation: op.id,
-      ...(op.kind === 'query' ? { snapshotEvent: 'friends.snapshot' } : {}),
-    })),
+    realtime: operations
+      .filter((op) => !['friends.search', 'friends.find'].includes(op.id))
+      .map((op) => ({
+        command: op.id,
+        operation: op.id,
+        ...(op.kind === 'query' ? { snapshotEvent: 'friends.snapshot' } : {}),
+      })),
     events: [changed],
     start: async (c) => {
       events = c.events;

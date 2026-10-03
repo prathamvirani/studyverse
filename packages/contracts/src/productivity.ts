@@ -5,6 +5,9 @@ export const timerConfigSchema = z.strictObject({
   shortBreakSeconds: z.number().int().min(60).max(3600),
   longBreakSeconds: z.number().int().min(60).max(7200),
   cycles: z.number().int().min(1).max(12),
+  autoStart: z.boolean().optional(),
+  alertRuntime: z.enum(['fixed', 'dismiss']).optional(),
+  alertSeconds: z.number().int().min(2).max(30).optional(),
 });
 export const timerTimingSchema = z.strictObject({
   version: z.number().int().nonnegative(),
@@ -14,6 +17,7 @@ export const timerTimingSchema = z.strictObject({
   running: z.boolean(),
   remainingMs: z.number().nonnegative(),
   anchorAt: z.number().nonnegative(),
+  focusSessions: z.number().int().nonnegative().optional(),
 });
 export const timerStateSchema = timerTimingSchema.extend({ roomId: z.uuid() });
 export const personalTimerStateSchema = timerTimingSchema.extend({ scope: z.literal('personal') });
