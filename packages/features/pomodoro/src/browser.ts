@@ -60,3 +60,18 @@ export function projectTimer<T extends TimerTiming>(state: T, now: number): T {
   }
   return { ...s, remainingMs: s.remainingMs - elapsed, anchorAt: now };
 }
+
+/** Public generic boundary observer. First snapshots and reconnect do not manufacture a break. */
+export function createBreakObserver(emit: (boundary: string) => void) {
+  let previous: TimerTiming | null = null;
+  return (state: TimerTiming | null, now: number) => {
+    if (!state) {
+      previous = null;
+      return;
+    }
+    const current = projectTimer(state, now);
+    if (previous?.phase === 'focus' && current.phase !== 'focus')
+      emit(`${current.version}:${current.phase}:${current.cycle}:${current.focusSessions ?? 0}`);
+    previous = current;
+  };
+}

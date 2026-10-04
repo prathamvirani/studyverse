@@ -3002,7 +3002,8 @@ A feature is not complete until it satisfies all applicable categories:
 - analytics do not leak sensitive data;
 - responsive behavior tested;
 - automated tests passing;
-- no known high-severity dependency issues;
+- no known high-severity dependency issues in deployed runtime artifacts; high-severity findings that exist only in development, build, or repository dependency trees may be accepted only when a documented reachability assessment shows they are absent from deployed runtime artifacts or otherwise not exploitable in the deployed threat model, no safer non-breaking fix is available, and the exception is explicitly recorded and owner-approved;
+- any accepted dependency-security exception must be documented in the phase report with the affected package and advisory, dependency chain, affected version, deployed-runtime presence or absence, reachability assessment, available remediation and why it was not applied, compensating controls where applicable, explicit owner approval, and a follow-up condition for re-review when an upstream fix becomes available;
 - feature does not violate canonical room UX.
 
 ---

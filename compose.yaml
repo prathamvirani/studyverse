@@ -68,6 +68,7 @@ services:
       POMODORO_ENABLED: ${POMODORO_ENABLED:-true}
       TASKS_ENABLED: ${TASKS_ENABLED:-true}
       ROOM_MEDIA_ENABLED: ${ROOM_MEDIA_ENABLED:-true}
+      ACTIVITIES_ENABLED: ${ACTIVITIES_ENABLED:-true}
       BACKGROUNDS_ENABLED: ${BACKGROUNDS_ENABLED:-true}
       RTC_ENABLED: ${RTC_ENABLED:-true}
       LIVEKIT_URL: wss://localhost:8443
@@ -105,6 +106,7 @@ services:
     environment:
       NUXT_PUBLIC_RTC_QUALITY_STAGE: ${NUXT_PUBLIC_RTC_QUALITY_STAGE:-basic}
       NUXT_PUBLIC_PERSONAL_MEDIA_ENABLED: ${NUXT_PUBLIC_PERSONAL_MEDIA_ENABLED:-true}
+      NUXT_PUBLIC_ACTIVITIES_ENABLED: ${NUXT_PUBLIC_ACTIVITIES_ENABLED:-true}
     build: { context: ., dockerfile: infra/docker/Dockerfile, target: web }
     depends_on:
       api: { condition: service_healthy }

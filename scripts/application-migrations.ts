@@ -1,4 +1,5 @@
 import { roomMediaDefinition } from '@study/room-media/server';
+import { activitiesDefinition } from '@study/activities/server';
 import { backgroundsDefinition } from '@study/backgrounds/server';
 import { pomodoroDefinition } from '@study/pomodoro/server';
 import { tasksDefinition } from '@study/tasks/server';
@@ -20,6 +21,7 @@ export async function applicationMigrationManifest() {
       chatDefinition,
       backgroundsDefinition,
       roomMediaDefinition,
+      activitiesDefinition,
     ].map(async (definition) => ({
       ...definition,
       migrations: [

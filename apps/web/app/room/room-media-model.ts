@@ -40,7 +40,7 @@ export function createRoomMediaModel(roomId: string, userId: string, realtime: R
   let unsubscribe: (() => void) | undefined;
   const applyAudio = () =>
     ambience.set(
-      state.view
+      state.view && state.audioEnabled
         ? effectiveMix(state.previewMix ?? state.view.state.mix, state.local).ambience
         : { rain: 0, white: 0, pink: 0, brown: 0 },
     );
@@ -107,6 +107,7 @@ export function createRoomMediaModel(roomId: string, userId: string, realtime: R
   }, 60000);
   const model = {
     state,
+    effects: { enable: ambience.enable, effect: ambience.effect },
     async resolveMetadata(videoId: string): Promise<MediaMetadata> {
       if (state.metadata[videoId]) return state.metadata[videoId]!;
       if (resolving.has(videoId)) return resolving.get(videoId)!;

@@ -5,7 +5,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-09-11',
   devtools: { enabled: false },
   telemetry: false,
-  runtimeConfig: { public: { rtcQualityStage: 'basic', personalMediaEnabled: true } },
+  runtimeConfig: {
+    public: { rtcQualityStage: 'basic', personalMediaEnabled: true, activitiesEnabled: true },
+  },
   modules: ['nuxt-security', '@nuxt/fonts', '@nuxt/image', '@nuxt/icon', '@vueuse/nuxt'],
   fonts: {
     // Resolve only the pinned local packages; never contact a font service.

@@ -29,10 +29,28 @@ export function noiseSamples(
 export function createAmbienceEngine() {
   let context: AudioContext | undefined;
   const nodes = new Map<string, { source: AudioBufferSourceNode; gain: GainNode }>();
+  const effects = new Set<OscillatorNode>();
   return {
     async enable() {
       context ??= new AudioContext();
       await context.resume();
+    },
+    effect(frequency: number, volume: number) {
+      if (!context || context.state !== 'running' || volume <= 0) return;
+      const oscillator = context.createOscillator(),
+        gain = context.createGain();
+      oscillator.frequency.value = Math.max(220, Math.min(1000, frequency));
+      gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume) * 0.12), context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+      oscillator.connect(gain).connect(context.destination);
+      effects.add(oscillator);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+        effects.delete(oscillator);
+      };
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.18);
     },
     set(levels: MediaPlayback['mix']['ambience']) {
       if (!context || context.state === 'closed') return;
@@ -56,6 +74,14 @@ export function createAmbienceEngine() {
       }
     },
     async close() {
+      for (const effect of effects) {
+        try {
+          effect.stop();
+        } catch {
+          /* already ended */
+        }
+      }
+      effects.clear();
       for (const node of nodes.values()) {
         node.source.stop();
         node.source.disconnect();

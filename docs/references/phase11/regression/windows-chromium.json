@@ -1,0 +1,14 @@
+{
+  "platform": "windows-chromium",
+  "runtime": {
+    "secure": true,
+    "passkeys": true,
+    "pip": true,
+    "sharing": false,
+    "fonts": [true, true],
+    "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36"
+  },
+  "widths": [1440, 2560, 768, 390, 320],
+  "errors": [],
+  "unnamed": []
+}

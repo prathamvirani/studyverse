@@ -1,4 +1,5 @@
 import { roomMediaModules } from './room-media.ts';
+import { activityModules } from './activities.ts';
 import { backgroundsModules } from './backgrounds.ts';
 import { productivityModules } from './productivity.ts';
 import { createPool, PostgresDatabase, PostgresSessionStore, sql } from '@study/adapters/postgres';
@@ -43,6 +44,7 @@ try {
       ...identityModules(db, process.env, config.APP_ORIGIN, socialDirectory(db), social.presence),
       ...social.modules,
       ...roomMediaModules(db, social.occupancy, process.env, true),
+      ...activityModules(db, social.occupancy, process.env),
     ],
     ready: async (signal) => {
       try {

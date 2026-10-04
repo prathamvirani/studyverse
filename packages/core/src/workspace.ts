@@ -152,7 +152,18 @@ export class Workspace extends TileHost {
     obstacles: Rectangle[] = [],
     target?: { id: string; slot: number; type: string },
   ) {
-    const definitions = this.types.values().filter((t) => t.workspaceCard);
+    const cards = this.types.values().filter((t) => t.workspaceCard);
+    const definitions = [
+      ...cards.filter((t) => t.openByDefault !== false),
+      ...cards.filter(
+        (t) =>
+          t.openByDefault === false &&
+          (target?.type === t.type ||
+            this.values().some(
+              (item) => item.type === t.type && !item.layout.minimized && this.snaps.has(item.id),
+            )),
+      ),
+    ];
     const minimum = (index: number) => {
       const type =
         target?.slot === index

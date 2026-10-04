@@ -6,3 +6,4 @@ export type * from './environment.ts';
 export type * from './rtc.ts';
 export type * from './room-media.ts';
 export type * from './personal-media.ts';
+export type * from './activities.ts';

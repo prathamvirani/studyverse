@@ -4,11 +4,20 @@ COPY . .
 RUN npm ci --ignore-scripts
 RUN npm run build
 
+FROM build AS api-deps
+
+RUN rm -rf node_modules \
+    && npm ci \
+      --omit=dev \
+      --ignore-scripts \
+      --workspace=@study/api \
+      --include-workspace-root=false
+
 FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS api
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /app/dist ./dist
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=api-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/packages/core/migrations ./packages/core/migrations
 COPY --from=build --chown=node:node /app/packages/features/identity/migrations ./packages/features/identity/migrations
 COPY --from=build --chown=node:node /app/packages/features/rooms/migrations ./packages/features/rooms/migrations
@@ -18,6 +27,8 @@ COPY --from=build --chown=node:node /app/packages/features/tasks/migrations ./pa
 COPY --from=build --chown=node:node /app/packages/features/chat/migrations ./packages/features/chat/migrations
 COPY --from=build --chown=node:node /app/packages/features/backgrounds/migrations ./packages/features/backgrounds/migrations
 COPY --from=build --chown=node:node /app/packages/features/room-media/migrations ./packages/features/room-media/migrations
+COPY --from=build --chown=node:node /app/packages/features/activities/migrations ./packages/features/activities/migrations
+
 USER node
 EXPOSE 3001
 CMD ["node", "dist/api/main.mjs"]

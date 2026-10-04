@@ -1,6 +1,6 @@
 import { defineComponent, h, reactive } from 'vue';
-import { layoutSchema } from '@study/contracts';
-import { TileRegistry, UiRegistry, Workspace } from '@study/core/browser';
+import { layoutSchema, breakStartedSchema } from '@study/contracts';
+import { TileRegistry, UiRegistry, Workspace, EventBus } from '@study/core/browser';
 import { Ellipsis } from '@study/ui';
 
 export interface Participant {
@@ -16,6 +16,8 @@ export interface Participant {
 
 /** Shared room hosts and controls; features register their own surfaces at composition time. */
 export function createRoomComposition(displayName: string, invite: () => void) {
+  const events = new EventBus();
+  events.register('timer.break.started', { id: 'timer.break.started', schema: breakStartedSchema });
   const ui = new UiRegistry(),
     tiles = new TileRegistry(),
     workspace = new Workspace(tiles);
@@ -104,6 +106,6 @@ export function createRoomComposition(displayName: string, invite: () => void) {
   register('room.invite', 'roomMoreMenu', 20, 'Invite management', () =>
     h('button', { onClick: invite }, 'Room details & invitations'),
   );
-  return { ui, tiles, workspace, participants, state };
+  return { ui, tiles, workspace, participants, state, events };
 }
 export type RoomComposition = ReturnType<typeof createRoomComposition>;

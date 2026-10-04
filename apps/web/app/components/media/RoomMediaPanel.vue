@@ -80,6 +80,7 @@ function describe(action: MediaAction) {
       />
       <MediaListening v-if="scope === 'room'" :model="model" :open-video="openVideo" />
       <UiExtensionHost v-else-if="ui" :registry="ui" point="mediaPanel" />
+      <UiExtensionHost v-if="ui" :registry="ui" point="mediaMixer" />
     </section>
   </OverlayPopover>
   <SettingsSheet

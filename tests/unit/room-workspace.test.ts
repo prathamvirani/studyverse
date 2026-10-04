@@ -26,6 +26,27 @@ function fixture(overrides: Partial<TileDefinition> = {}) {
   return new Workspace(types);
 }
 const bounds = { width: 900, height: 600 };
+it('preserves default snap geometry when an optional card is registered first', () => {
+  const baseline = fixture({ workspaceCard: true });
+  const optional = fixture({
+    workspaceCard: true,
+    openByDefault: false,
+    minimumSize: { width: 220, height: 300 },
+    defaultSize: { width: 300, height: 300 },
+  });
+  optional.types.register('default.card', {
+    ...baseline.types.get('fixture.tile')!,
+    type: 'default.card',
+  });
+  expect(optional.snapSlots(bounds)).toEqual(baseline.snapSlots(bounds));
+  const narrow = { width: 200, height: 600 };
+  expect(optional.snapSlots(narrow)).toEqual(baseline.snapSlots(narrow));
+  const tile = optional.open('fixture.tile', 'optional');
+  expect(optional.snapSlots(bounds)).toEqual(baseline.snapSlots(bounds));
+  const preview = optional.snapTarget(tile.id, 0, bounds)!;
+  expect(preview.rect.width).toBeGreaterThanOrEqual(220);
+  expect(preview.rect.height).toBeGreaterThanOrEqual(300);
+});
 it('derives snap columns from current chrome and preserves the preview through drop and reflow', () => {
   const ws = fixture({
     workspaceCard: true,

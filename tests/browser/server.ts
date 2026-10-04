@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { roomMediaModules } from '../../apps/api/src/room-media.ts';
+import { activityModules } from '../../apps/api/src/activities.ts';
 import { backgroundsModules } from '../../apps/api/src/backgrounds.ts';
 import { rtcModules } from '../../apps/api/src/rtc.ts';
 import { rtcBundle } from './rtc-bundle.ts';
@@ -110,6 +111,7 @@ const { app } = await createServer({
       backgrounds: backgroundPreviews(db),
     }),
     ...social.modules,
+    ...activityModules(db, social.occupancy),
     ...roomMediaModules(db, social.occupancy, {}, true, {
       resolve: async (videoId) => ({
         videoId,

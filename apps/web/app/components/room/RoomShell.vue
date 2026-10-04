@@ -611,14 +611,16 @@ async function ready(bounds: Bounds) {
   };
   props.workspace.recover(saved, bounds);
   const slots = props.workspace.snapSlots(bounds, workspaceObstacles.value);
-  cardDefinitions.value.forEach((definition, index) => {
-    const existing = props.workspace.values().find((i) => i.type === definition.type);
-    if (existing || (saved.panels.initialized && saved.panels[definition.type] === false)) return;
-    const tile = props.workspace.open(definition.type, 'room');
-    if (bounds.width < 620 || index >= slots.length)
-      props.workspace.update(tile.id, { ...tile.layout, minimized: true });
-    else props.workspace.snap(tile.id, index, bounds, workspaceObstacles.value);
-  });
+  cardDefinitions.value
+    .filter((definition) => definition.openByDefault !== false)
+    .forEach((definition, index) => {
+      const existing = props.workspace.values().find((i) => i.type === definition.type);
+      if (existing || (saved.panels.initialized && saved.panels[definition.type] === false)) return;
+      const tile = props.workspace.open(definition.type, 'room');
+      if (bounds.width < 620 || index >= slots.length)
+        props.workspace.update(tile.id, { ...tile.layout, minimized: true });
+      else props.workspace.snap(tile.id, index, bounds, workspaceObstacles.value);
+    });
   panelStates.value.initialized = true;
   loaded = true;
   if (store.mode === 'memory')
@@ -628,8 +630,9 @@ async function ready(bounds: Bounds) {
   emit('visualReady');
 }
 function showCard(type: string, visible: boolean) {
-  const tile =
-    props.workspace.values().find((i) => i.type === type) ?? props.workspace.open(type, 'room');
+  const existing = props.workspace.values().find((i) => i.type === type);
+  if (!existing && !visible) return;
+  const tile = existing ?? props.workspace.open(type, 'room');
   props.workspace.update(tile.id, { ...tile.layout, minimized: !visible, fullscreen: false });
   props.workspace.place(tile.id, {}, currentBounds, false);
   if (visible) props.workspace.focus(tile.id);
@@ -638,7 +641,12 @@ function showCard(type: string, visible: boolean) {
 function preset(value: string) {
   presentation.value = presentationPreset(value as Presentation['preset']);
   revealed.value = false;
-  for (const definition of cardDefinitions.value)
+  for (const definition of cardDefinitions.value) {
+    if (
+      definition.openByDefault === false &&
+      !props.workspace.values().some((i) => i.type === definition.type)
+    )
+      continue;
     showCard(
       definition.type,
       value === 'standard' ||
@@ -647,6 +655,7 @@ function preset(value: string) {
           ['Pomodoro', 'Clock'].includes(definition.label)) ||
         (value === 'ambient' && definition.label === 'Clock'),
     );
+  }
   if (value === 'projector') {
     const visible = props.workspace
       .values()
@@ -1164,6 +1173,7 @@ onUnmounted(() => {
       </button>
       <UiExtensionHost :registry="ui" point="bottomDock" :context="{ revision }" />
     </nav>
+    <UiExtensionHost :registry="ui" point="notifications" :context="{ revision }" />
     <button
       v-if="!presentation.header || !presentation.dock || !presentation.participants"
       class="room-reveal glass"

@@ -13,6 +13,8 @@ import { curatedProvider } from '@study/backgrounds/browser';
 import { roomOrigin, memberLabel, titleCase, roomAddress } from '../lib/room-navigation';
 import { registerRoomMedia } from '../room/room-media';
 import { registerPersonalMedia } from '../room/personal-media';
+import { registerActivities } from '../room/activities';
+let activities: ReturnType<typeof registerActivities>;
 let personalMedia: ReturnType<typeof registerPersonalMedia>;
 let roomMedia: ReturnType<typeof registerRoomMedia> | undefined;
 import { registerBackgrounds } from '../room/backgrounds';
@@ -50,6 +52,7 @@ function leave() {
   );
   entryGeneration++;
   void personalMedia?.dispose();
+  activities?.dispose();
   void media?.dispose();
   roomMedia?.dispose();
   stopProductivity?.();
@@ -73,6 +76,7 @@ onUnmounted(() => {
   disposed = true;
   signalVisualReady?.();
   backgrounds?.dispose();
+  activities?.dispose();
   void personalMedia?.dispose();
   entryGeneration++;
   void media?.dispose();
@@ -276,6 +280,14 @@ async function enter() {
     realtime ??= createRealtimeClient();
     backgrounds?.activate();
     roomMedia = registerRoomMedia(composition, room.value.id, profile.value!.id, realtime);
+    activities = registerActivities(
+      composition,
+      room.value.id,
+      profile.value!.id,
+      realtime,
+      roomMedia.effects,
+      config.public.activitiesEnabled !== false,
+    );
     personalMedia = registerPersonalMedia(
       composition,
       profile.value!.id,
@@ -288,6 +300,7 @@ async function enter() {
       room.value.id,
       realtime,
       composition.tiles,
+      composition.events,
     );
     social.room(room.value.id);
     immersive.value = true;

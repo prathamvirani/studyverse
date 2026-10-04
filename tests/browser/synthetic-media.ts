@@ -12,7 +12,10 @@ export async function syntheticMedia(page: Page, options = { width: 640, height:
         oscillator.start();
         const track = destination.stream.getAudioTracks()[0]!,
           stop = track.stop.bind(track);
+        let stopped = false;
         track.stop = () => {
+          if (stopped) return;
+          stopped = true;
           oscillator.stop();
           void ctx.close();
           stop();

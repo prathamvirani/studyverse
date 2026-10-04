@@ -61,7 +61,7 @@ function back() {
         disclosure of your status and current room outside this room. Blocks remain enforced.
       </p>
       <NuxtLink class="action-link" to="/account#presence">Account presence & privacy</NuxtLink>
-      <UiExtensionHost :registry="ui" point="roomMoreMenu" :context="{ category }" />
+      <UiExtensionHost :registry="ui" point="roomMoreMenu" :context="{ category, open }" />
     </template>
     <p v-else-if="category === 'Notifications'">
       Room notices appear while you study. Optional Pomodoro alerts are configured in Timer
@@ -69,8 +69,13 @@ function back() {
     </p>
     <template v-else>
       <PlatformCapabilities v-if="category === 'Diagnostics'" />
-      <UiExtensionHost :registry="ui" point="roomSettings" :context="{ category }" />
-      <UiExtensionHost v-if="category === 'Media & Devices'" :registry="ui" point="roomMoreMenu" />
+      <UiExtensionHost :registry="ui" point="roomSettings" :context="{ category, open }" />
+      <UiExtensionHost
+        v-if="category === 'Media & Devices'"
+        :registry="ui"
+        point="roomMoreMenu"
+        :context="{ category, open }"
+      />
     </template>
   </SettingsSheet>
 </template>

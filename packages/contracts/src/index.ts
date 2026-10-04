@@ -7,6 +7,7 @@ export const realtimeUnsubscribeSchema = z.strictObject({
     .regex(/^[a-z][a-z0-9.-]+$/),
 });
 export { z } from 'zod';
+export * from './activities.ts';
 export * from './identity.ts';
 export * from './social.ts';
 
@@ -74,6 +75,7 @@ export const extensionPoints = [
   'rightRail',
   'bottomDock',
   'mediaPanel',
+  'mediaMixer',
   'workspaceTile',
   'roomMoreMenu',
   'roomSettings',

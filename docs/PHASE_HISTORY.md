@@ -1,5 +1,31 @@
 # Phase History
 
+## Phase 11 — Owner-authorized sequencing exception — 2026-10-03
+
+Status: COMPLETE — ACCEPTED BY OWNER ON 2026-10-04.
+
+Spec: docs/phases/PHASE_11_SOCIAL_BONDING_AND_MINI_GAMES.md
+
+The owner explicitly authorizes Phase 11 source development despite the unmet Phase 10 sequencing prerequisite. Phase 10 is HALTED / PENDING and remains **IN_PROGRESS — PENDING SECURE APPLE INTEGRATION**; no completion, acceptance, resolution or supersession is implied. Spotify policy, Apple credential storage and Phase 09's inherited dependency audit remain unresolved. This exception changes sequencing only, with all Phase 11 security, authorization, architecture and test requirements intact. Prior entries and the Phase 10 report remain historical evidence. Source development only; no Vultr, live database, DNS, secrets, OAuth, Cloudflare, firewall or deployment changes. Stop after Phase 11 for owner review.
+
+Source implementation delivered the generic framework, two original activities, authoritative permissions/lifecycle/scores/drawing, bounded payloads and rates, optional break suggestions and independent SFX through existing workspace/realtime/mixer owners. Report: docs/reports/PHASE_11_SOCIAL_BONDING_AND_MINI_GAMES_REPORT.md. Dependency remediation subsequently upgraded Fastify to 5.12.5, applied non-breaking audit fixes, and isolated the API runtime dependency graph. The remaining repository-level HIGH findings are `braces` (GHSA-vfj7-8cjw-p6xm) and `node-forge` (GHSA-86w9-cpqp-85rv); both were verified absent and not resolvable in the final web and API runtime images. The owner explicitly approved the documented dependency-security exceptions on 2026-10-04 under the revised UMBRELLA_SPEC §64 completion gate. Ready for next phase: **YES**, subject to explicit owner authorization and with Phase 10 remaining separately halted/pending.
+
+Validation: 282 unit/integration and 88 service cases passed. Broad browser: 31/35, with all four failed layout cases repaired in separate 6/7 scoped evidence; corrected word fixture 1/1 and browser false-switch 1/1. Build/typecheck/lint/contracts/source/secret checks passed; two historical formatting exceptions remain. All 20 inherited migrations, 340 references, 24 reports and 987 external dependency entries are unchanged. No development migration/DML was issued; the fresh pre-browser/final 22-table comparison matches. No clean 35/35 broad run or live deployment is claimed. Owner acceptance was granted on 2026-10-04 after dependency remediation and runtime-image verification.
+
+## Phase 10 — Provider compliance/security checkpoint — 2026-10-03
+
+Status: IN_PROGRESS — PENDING SECURE APPLE INTEGRATION.
+
+Spec: docs/phases/PHASE_10_SPOTIFY_AND_APPLE_MUSIC_PROVIDER_INTEGRATIONS.md
+
+Report: docs/reports/PHASE_10_SPOTIFY_AND_APPLE_MUSIC_PROVIDER_INTEGRATIONS_REPORT.md
+
+The owner authorized sequential source development through Phase 10 → Phase 11 despite Phase 09's inherited dependency-audit completion gate. This sequencing exception does not accept Phase 09 or waive its audit/security/provider requirements. Earlier status, evidence and authorization boundaries below remain historical and unchanged.
+
+Fresh official-provider review and static MusicKit SDK/documentation inspection are recorded in the report. Spotify mixed-media/game policy concerns remain unresolved. MusicKit JS defaults to browser-readable user-token persistence; no documented no-persistence configuration was identified. This does not establish that no supported solution exists. The owner explicitly selected **“Keep Phase 10 pending secure Apple integration”** rather than accepting external-link fallbacks as delivery.
+
+Phase 10 account linking/playback/security implementation and validation are not complete. No product source, provider route, SDK initialization, migration, configuration, development data or live deployment was changed. Phase 11's structural-completion gate is not met; Phase 11 and all Phase 12+ work are NOT STARTED. No COMPLETE or ACCEPTED status is claimed. Keep Phase 10 active at this pending checkpoint.
+
 ## Phase 09 — Personal Study Player — 2026-10-03
 
 Status: IN_PROGRESS

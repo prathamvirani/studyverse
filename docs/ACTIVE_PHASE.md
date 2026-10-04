@@ -1,5 +1,37 @@
 # Active Development Phase
 
+ACTIVE_PHASE: 11
+
+ACTIVE_SPEC:
+docs/phases/PHASE_11_SOCIAL_BONDING_AND_MINI_GAMES.md
+
+STATUS:
+COMPLETE
+Owner authorization on 2026-10-03 permitted Phase 11 source development while Phase 10 remained HALTED / PENDING at **IN_PROGRESS — PENDING SECURE APPLE INTEGRATION**. Phase 10 remains separately pending and is not accepted or superseded by Phase 11 completion. On 2026-10-04, the owner explicitly approved the documented dependency-security exceptions for `braces` and `node-forge` after remediation and runtime-image verification. No live deployment work is authorized. Phase 12 is not authorized.
+
+Phase 11 implementation is complete and accepted: generic activity registry, original Letter Lantern and Sketch Circle activities, server-authoritative lifecycle/permissions/scoring/drawing, bounded hostile-client handling, explicit participation/spectating, optional Pomodoro break suggestions, independent SFX, and existing workspace/mixer integration. Report: `docs/reports/PHASE_11_SOCIAL_BONDING_AND_MINI_GAMES_REPORT.md`. Fastify was upgraded to 5.12.5, non-breaking audit fixes were applied, and the API runtime dependency graph was isolated. The remaining repository-level HIGH findings, `braces` and `node-forge`, were verified absent and not resolvable in both final web and API runtime images. Under the revised UMBRELLA_SPEC §64 gate and explicit owner approval, these findings no longer block Phase 11 completion. Ready for next phase: **YES**, subject to explicit owner authorization.
+
+Final evidence: 282/282 unit/integration; 88/88 services; broad browser 31/35 with four layout regressions repaired separately (6/7 scoped, then corrected word fixture 1/1); production browser disable switch 1/1. Build/typecheck/lint/contracts/source/secret checks pass. Fastify 5.12.5 was validated after remediation; final web and API runtime images do not resolve `node-forge` or `braces`. Historical integrity evidence remains preserved. No clean 35/35 broad browser rerun or live deployment is claimed.
+## Previous Phase 10 coordination (historical)
+
+ACTIVE_PHASE: 10
+
+ACTIVE_SPEC:
+docs/phases/PHASE_10_SPOTIFY_AND_APPLE_MUSIC_PROVIDER_INTEGRATIONS.md
+
+STATUS:
+IN_PROGRESS
+
+COMPLETION_GATE: PENDING SECURE APPLE INTEGRATION — Phase 10 is not structurally complete.
+
+On 2026-10-03 the owner explicitly authorized source development through Phase 10 → Phase 11 despite Phase 09's inherited dependency-audit completion gate. This is a sequencing exception only, with no acceptance or audit waiver. Phase 09's actual status, report, history and unresolved audit remain preserved below.
+
+The fresh official provider review identified Spotify mixed-media/game policy concerns and MusicKit JS default browser-readable user-token persistence with no documented no-persistence configuration identified. The owner explicitly chose **“Keep Phase 10 pending secure Apple integration”** instead of accepting external-link fallbacks as delivery. No provider account linking/playback or fallback substitute was shipped. Report: `docs/reports/PHASE_10_SPOTIFY_AND_APPLE_MUSIC_PROVIDER_INTEGRATIONS_REPORT.md`. Evidence: `.local/validation/phase10/provider-source-inspection.json`.
+
+Ready for next phase: NO. Phase 11's owner-authorized continuation is conditional on Phase 10 structural completion with no new unresolved functional/security blocker. That gate is not satisfied. Phase 11 and all Phase 12+ work remain NOT STARTED. No live deployment, data, migrations, secrets or runtime source were changed. Stop at this pending checkpoint; do not mark COMPLETE or ACCEPTED.
+
+## Previous Phase 09 coordination (historical)
+
 ACTIVE_PHASE: 09
 
 ACTIVE_SPEC:

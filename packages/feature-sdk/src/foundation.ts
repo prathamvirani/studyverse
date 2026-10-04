@@ -157,6 +157,8 @@ export interface TileDefinition<Renderer = unknown> {
   readonly persist?: boolean;
   /** Independently visible room card, eligible for the shared snap column. */
   readonly workspaceCard?: boolean;
+  /** Optional cards are opened only by an explicit feature/workspace action. */
+  readonly openByDefault?: boolean;
   readonly retainOnMinimize?: boolean;
   /** Keep a policy-required presentation visible when its larger card is collapsed/closed. */
   readonly minimizedPresentation?: { readonly width: number; readonly height: number };
