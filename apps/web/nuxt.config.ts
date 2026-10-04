@@ -91,7 +91,13 @@ export default defineNuxtConfig({
         'frame-ancestors': ["'none'"],
         'img-src': ["'self'", 'data:', 'blob:', 'https://i.ytimg.com'],
         'frame-src': ['https://www.youtube.com', 'https://player.vimeo.com'],
-        'connect-src': ["'self'", 'https://www.youtube.com'],
+        'connect-src': [
+                        "'self'",
+                        'https://www.youtube.com',
+                        'https://player.vimeo.com',           
+                        'https://rtc.studyspace.my',
+                        'wss://rtc.studyspace.my',
+                      ],
         'media-src': ["'self'", 'blob:'],
         'script-src': [
           "'self'",
