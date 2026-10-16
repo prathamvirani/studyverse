@@ -31,7 +31,7 @@ services:
       timeout: 3s
       retries: 30
   livekit:
-    image: livekit/livekit-server:v1.13.6@sha256:e37d68f172556d02aa77968b9fc55ef481468c0315fa38e4fa6c56ce72e3a815
+    image: livekit/livekit-server:v1.13.9@sha256:d0c04791bf63ca8dcea123571827d56ba9504bd57c8d5de60ee03b5408cc3154
     command: ['--config', '/etc/livekit.yaml']
     volumes: ['./.local/livekit.yaml:/etc/livekit.yaml:ro']
     ports:
